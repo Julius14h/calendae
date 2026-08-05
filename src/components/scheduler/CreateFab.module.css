@@ -1,0 +1,145 @@
+/* Anchored to Scheduler.module.css's own `.schedulerRoot` (position:relative
+   there) rather than the viewport — a viewport-fixed corner sits outside
+   the scheduler's own rounded card whenever that card doesn't fill the
+   whole page, floating over whatever's behind it instead of reading as part
+   of the calendar itself. */
+.root {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 50;
+  /* Without a name of its own, this falls into the browser's generic,
+     unnamed "root" View Transition group along with everything else that
+     isn't `scheduler-view` (see Scheduler.tsx's handleViewChange) — and
+     Chrome hides that group's *live* content for the duration of the
+     transition, which reads as the FAB blinking out for up to half a
+     second on every Day/Week/Month switch. Naming it exempts this subtree
+     from that mechanism entirely, so it just keeps rendering live and
+     stays visible throughout — nothing about the FAB itself changes across
+     a view switch, so there's no old/new difference to crossfade anyway. */
+  view-transition-name: create-fab;
+}
+
+/* Transparent at rest (a faint blue-tinted outline is the only hint it's
+   there) — filling in with a solid white plate + shadow only on hover/focus
+   is the "fills on hover" affordance the corner button is meant to have,
+   rather than sitting on screen at full visual weight all the time. */
+.fab {
+  width: 56px;
+  height: 56px;
+  box-sizing: border-box;
+  border-radius: var(--sched-radius, 16px);
+  border: 1.5px solid color-mix(in srgb, var(--sched-accent) 35%, transparent);
+  background: transparent;
+  color: var(--sched-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, transform 150ms ease;
+}
+
+.fab:hover,
+.fab:focus-visible {
+  background: #fff;
+  border-color: var(--sched-accent);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+  transform: translateY(-1px);
+}
+
+.fab:active {
+  transform: translateY(0);
+}
+
+.fab:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+/* Stays "filled" while the menu is open, not just on hover — otherwise
+   moving the pointer from the button to the menu below would visually
+   un-fill it mid-interaction. */
+.fabOpen {
+  background: #fff;
+  border-color: var(--sched-accent);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+}
+
+/* Absolutely positioned above the button (rather than stacked via flex in
+   .root) specifically so it can stay mounted at all times without
+   reserving layout space while closed — a permanently-mounted flex sibling
+   would otherwise push the button itself around by the menu's own height.
+   Always-mounted is what lets the close transition play at all: a
+   conditionally-rendered `{open && ...}` unmounts the instant `open` goes
+   false, before any exit transition gets a chance to run. opacity/transform
+   animate on both open and close symmetrically; `visibility`'s transition
+   delay is what keeps it out of the tab order and un-clickable while closed
+   without cutting the closing fade/slide short. */
+.menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--sched-surface);
+  border: 1px solid var(--sched-border);
+  border-radius: var(--sched-radius-sm, 10px);
+  padding: 6px;
+  min-width: 190px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+  transform-origin: bottom right;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(6px) scale(0.98);
+  transition: opacity 160ms ease-out, transform 160ms ease-out, visibility 0s linear 160ms;
+}
+
+.menuOpen {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition: opacity 160ms ease-out, transform 160ms ease-out, visibility 0s linear 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .menuOpen {
+    transition: opacity 160ms ease-out, visibility 0s linear;
+    transform: none;
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border-radius: calc(var(--sched-radius-sm, 10px) - 2px);
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease-in-out;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: color-mix(in srgb, var(--sched-accent) 12%, transparent);
+}
+
+.menuItem:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: -2px;
+}
+
+.menuItem svg {
+  flex: 0 0 auto;
+  color: var(--sched-accent);
+}

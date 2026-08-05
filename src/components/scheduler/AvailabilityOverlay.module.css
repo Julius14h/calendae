@@ -1,0 +1,50 @@
+.band {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+  /* Bands are conditionally rendered (see AvailabilityOverlay.tsx — the
+     array is empty until an event is selected), so a plain CSS transition
+     wouldn't animate the *appearance*: there's no prior "off" state on the
+     same element to transition from, since it doesn't exist until this
+     fires. An animation runs automatically on mount instead. Removal is the
+     opposite problem — the component holds the last bands in state for
+     FADE_OUT_MS and toggles .bandExiting, which *is* a real class change on
+     a still-mounted element, so a transition handles that half. */
+  animation: bandFadeIn 450ms ease-out;
+  transition: opacity 450ms ease-out;
+}
+
+@keyframes bandFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bandExiting {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band {
+    animation: none;
+    transition: none;
+  }
+}
+
+.preferred {
+  background: rgba(34, 197, 94, 0.22);
+  border-top: 1px solid rgba(34, 197, 94, 0.5);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.5);
+}
+
+.available {
+  background: rgba(234, 179, 8, 0.22);
+  border-top: 1px solid rgba(234, 179, 8, 0.5);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.5);
+}
+
+.unavailable {
+  background: rgba(239, 68, 68, 0.16);
+  border-top: 1px solid rgba(239, 68, 68, 0.35);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.35);
+}

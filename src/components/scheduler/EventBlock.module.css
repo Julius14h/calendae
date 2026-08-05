@@ -1,0 +1,295 @@
+.event {
+  position: absolute;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  border-radius: var(--sched-radius-sm, 10px);
+  /* Tonal fill (a faint tint of the category color mixed into the surface)
+     plus a full-strength left accent bar, rather than a solid saturated
+     block — keeps five-plus color-coded categories from all shouting at
+     once on a single screen. */
+  border-left: 3px solid var(--event-color, var(--sched-accent));
+  background: color-mix(in srgb, var(--event-color, var(--sched-accent)) 22%, var(--sched-surface));
+  color: var(--sched-text);
+  cursor: grab;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  /* background-color/color match the page-wide 300ms ease-in-out theme-
+     toggle speed (see index.css's .theme-transition) rather than a faster
+     hover-only duration — hover's own tint-intensify rides along at the
+     same speed as a result, which reads as a touch more deliberate but
+     keeps a light/dark toggle from snapping on every event on screen while
+     the rest of the page fades. */
+  /* top/height animate a row's expand/collapse in horizontal mode (see
+     TimelineView's expandedResourceIds) shifting this event up/down and
+     resizing its lane; left/width do the equivalent job in vertical mode
+     (see WeekViewVertical's own per-day expand state), where the room axis
+     is horizontal instead — either way `.dragging`'s own `transition: none`
+     below already disables these during an active move/resize, so the
+     block still tracks the pointer instantly rather than lagging behind
+     it. */
+  transition: box-shadow 150ms ease, transform 150ms ease, background-color 300ms ease-in-out, color 300ms ease-in-out, top 200ms ease-in-out, height 200ms ease-in-out, left 200ms ease-in-out, width 200ms ease-in-out;
+  user-select: none;
+  touch-action: none;
+  z-index: 2;
+}
+
+.event:hover {
+  background: color-mix(in srgb, var(--event-color, var(--sched-accent)) 30%, var(--sched-surface));
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+  z-index: 3;
+}
+
+.event:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+/* A soft glow in a darkened/more saturated shade of the event's own color —
+   the category color already owns the fill, so selection stays in that same
+   hue instead of switching to an unrelated blue box. The thin surface ring
+   still separates it from the pale fill underneath; the glow itself is blur,
+   not a hard second border. */
+.selected {
+  box-shadow:
+    0 0 0 2px var(--sched-surface),
+    0 0 6px 2px color-mix(in srgb, var(--event-color, var(--sched-accent)) 75%, black 25%),
+    0 6px 14px rgba(15, 23, 42, 0.18);
+  z-index: 4;
+}
+
+/* .event:hover's box-shadow/z-index above would otherwise win here — a
+   pseudo-class bumps its specificity above a plain .selected class selector,
+   so right after a double-click (while the pointer is still resting on the
+   event that was just selected) the weaker hover glow visually overrode the
+   selected one until the mouse moved away. This ties that specificity and
+   wins the tie by coming later in the file. */
+.selected:hover {
+  box-shadow:
+    0 0 0 2px var(--sched-surface),
+    0 0 6px 2px color-mix(in srgb, var(--event-color, var(--sched-accent)) 75%, black 25%),
+    0 6px 14px rgba(15, 23, 42, 0.18);
+  z-index: 4;
+}
+
+.dragging {
+  cursor: grabbing;
+  opacity: 0.9;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
+  z-index: 5;
+  transition: none;
+}
+
+.locked {
+  cursor: pointer;
+}
+
+/* WeekViewVertical's orientation: room-column width instead of a full-row
+   width, duration as height instead of width — the internal layout (handle +
+   content + handle) becomes a vertical stack, and the category-color accent
+   bar moves from the left edge to the top edge to match. */
+.vertical {
+  flex-direction: column;
+  border-left: none;
+  border-top: 3px solid var(--event-color, var(--sched-accent));
+}
+
+.defaultContent {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2px;
+  pointer-events: none;
+}
+
+/* Horizontal mode's own layout: avatar as a leading column beside a
+   title+time text stack, rather than defaultContent's default stacked rows
+   — reduced left AND right padding (down from defaultContent's base 10px
+   each, matching .defaultContentVertical's own reduction) pulls the whole
+   group (avatar, title, time) further toward the block's edge, reclaiming
+   some of the room the avatar now takes up in a mode whose slots are often
+   already narrow. align-items: flex-start (not center) is deliberate:
+   centering the avatar against the FULL row height (title + time together)
+   puts its center noticeably below the title line, in the gap toward time
+   — flex-start instead lines the avatar's own top up with the title's, so
+   their centers land close to level with each other instead. */
+.defaultContentHorizontal {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 6px 6px 0;
+}
+
+/* Same avatar-leading-column layout as defaultContentHorizontal — reduced
+   left AND right padding (down from defaultContent's base 10px each)
+   reclaims a few pixels for the title/time column on both sides, which
+   otherwise has to fit in a room-column-width block minus the avatar and
+   gap; without it, the time text was tight enough to wrap onto an extra
+   line. Reduced top padding (down from defaultContent's base 6px) shifts
+   the whole row — avatar and text together, so their relative alignment
+   (see .textStackVertical) stays intact — up slightly, closer to
+   vertically centered in the block. */
+.defaultContentVertical {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 6px;
+  padding-left: 4px;
+  padding-right: 6px;
+  padding-top: 3px;
+}
+
+/* Title above time, sharing one left edge — this is what keeps time
+   aligned under title now that the avatar sits to their shared left as its
+   own column, instead of inline before title on its own row (see
+   defaultContentHorizontal's own comment). */
+.textStack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Vertical mode's own avatar (22px, the base .avatar size — unlike
+   horizontal mode's shrunk .avatarHorizontal) is taller than the title's
+   own line height (12.5px font, 1.25 line-height ≈ 15.6px), so top-
+   aligning the row (see defaultContentVertical) leaves the avatar's own
+   center sitting visibly below the title's — this nudges the whole stack
+   down by exactly half that height difference ((22 - 15.625) / 2), so the
+   title's center lands level with the avatar's instead. */
+.textStackVertical {
+  padding-top: 3px;
+}
+
+/* Instructor avatar — colored per-instructor (--avatar-color, set inline
+   from utils/instructorColor.ts), deliberately *not* the event's own
+   --event-color (category color): matches MonthView.module.css's own
+   .eventBarAvatar so the same instructor reads as the same color everywhere
+   in the scheduler, letting a double-booking show up as a repeated color
+   rather than being hidden behind whichever category happens to be booked
+   in each slot. pointer-events re-enabled (its parent turns them off) so
+   the native `title` tooltip still fires on hover. */
+/* Same tonal-fill formula as .event's own — a pastel tint of the
+   instructor color mixed into the surface, rather than a solid saturated
+   fill, so the avatar reads as part of the same visual language as the
+   event blocks it sits inside. No border/accent strip on top of that
+   (tried a left-only one matching .event's own accent bar, but it read as
+   an unwanted extra on such a small circle) — just the pastel fill and the
+   instructor-colored text. */
+.avatar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--avatar-color);
+  background: color-mix(in srgb, var(--avatar-color) 22%, var(--sched-surface));
+  cursor: default;
+  pointer-events: auto;
+  text-align: center;
+  /* `squished` mounts/unmounts this element outright (see the JSX below)
+     rather than toggling a class, so a `transition` here would never have a
+     "before" state to animate from — a mount-triggered keyframe animation
+     is what actually plays when a room expands and the avatar reappears.
+     Delayed to start only once the event's own width transition (see
+     .event's 200ms left/width transition above) has finished — starting it
+     immediately meant the fade played while the block itself was still too
+     narrow to show the avatar (clipped by .event's overflow:hidden), so it
+     read as popping in at the end rather than fading; animation-fill-mode:
+     backwards holds it at the animation's 0%-keyframe (opacity: 0) for the
+     whole delay so nothing flashes into view early either. */
+  animation-name: avatarFadeIn;
+  animation-duration: 400ms;
+  animation-timing-function: ease-out;
+  animation-delay: 200ms;
+  animation-fill-mode: backwards;
+}
+
+/* Horizontal mode's own leading-column avatar (see defaultContentHorizontal)
+   sits right next to a bold title rather than squeezed into a shared row
+   with it — slightly smaller than the base .avatar size reads better
+   alongside that layout. */
+.avatarHorizontal {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+}
+
+@keyframes avatarFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar {
+    animation: none;
+  }
+}
+
+.title {
+  min-width: 0;
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.time {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--sched-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Vertical mode's blocks are narrow but often tall (room-column width, but
+   duration-driven height) — there's usually real vertical room to spare, so
+   truncating to one line and eating the rest with an ellipsis wastes space
+   that's already sitting right there unused. Horizontal mode's blocks are
+   the opposite (often wide but short, especially squished multi-lane rows),
+   where single-line truncation is still the right call — so this only
+   loosens it for `.vertical`. */
+.vertical .title,
+.vertical .time {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.resizeHandleLeft,
+.resizeHandleRight {
+  flex: 0 0 auto;
+  width: 8px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.resizeHandleTop,
+.resizeHandleBottom {
+  flex: 0 0 auto;
+  height: 8px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.resizeHandleLeft:hover,
+.resizeHandleRight:hover,
+.resizeHandleTop:hover,
+.resizeHandleBottom:hover {
+  background: color-mix(in srgb, var(--event-color, var(--sched-accent)) 30%, transparent);
+}

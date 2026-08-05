@@ -1,0 +1,312 @@
+.drawer {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  background: var(--sched-header-bg);
+  /* width stays fast (the open/close slide); background-color gets the
+     slower, page-wide theme-toggle speed instead. */
+  transition: width 220ms ease, background-color 300ms ease-in-out;
+}
+
+.drawerOpen {
+  width: 320px;
+}
+
+/* Fixed width regardless of the outer wrapper's animating width — same
+   curtain-reveal approach as SchedulerDrawer's `.content`. */
+.content {
+  width: 320px;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 44px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--sched-text);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text-muted);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.closeButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.fieldsWrapper {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sched-text-muted);
+  opacity: 0.75;
+}
+
+/* Pushed to the far right of the Instructor label row via margin-left:
+   auto — an outlined eye (rather than filled) reads as "preview." Its
+   color comes from the icon's own `color` prop in the JSX (the same
+   class-type accent as the other row icons), not from CSS. */
+.viewInstructorButton {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.viewInstructorButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.viewInstructorButton:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+.fieldValue {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--sched-text);
+}
+
+.twoColumnRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dateTimeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dateTimeText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dateLine {
+  font-size: 14px;
+  color: var(--sched-text-muted);
+}
+
+.timeLine {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--sched-text);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sched-accent);
+  background: color-mix(in srgb, var(--sched-accent) 16%, var(--sched-surface));
+}
+
+.select {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+/* Once a <select>'s own `color` is author-set, Chrome stops applying its
+   automatic dark-mode listbox and falls back to a plain light popup unless
+   the <option>s are explicitly styled too — this is what keeps the open
+   dropdown list itself (not just the closed box) matching the theme. */
+.select option {
+  background: var(--sched-surface);
+  color: var(--sched-text);
+}
+
+.select:hover {
+  border-color: var(--sched-border);
+}
+
+.select:focus-visible {
+  border-color: var(--sched-accent);
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+.deleteButton {
+  width: 100%;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 0;
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  border-radius: var(--sched-radius-sm);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  background: color-mix(in srgb, #ef4444 8%, transparent);
+  color: #ef4444;
+  cursor: pointer;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.deleteButton:hover {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+}
+
+.deleteButton:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+.confirmDelete {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--sched-radius-sm);
+  background: color-mix(in srgb, #ef4444 10%, transparent);
+  border: 1px solid color-mix(in srgb, #ef4444 40%, var(--sched-border));
+}
+
+.confirmDeleteText {
+  font-size: 14px;
+  color: var(--sched-text);
+}
+
+.confirmDeleteActions {
+  display: flex;
+  gap: 8px;
+}
+
+.cancelDeleteButton,
+.confirmDeleteButton {
+  flex: 1;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 0;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.cancelDeleteButton {
+  border: 1px solid var(--sched-border);
+  background: var(--sched-surface);
+  color: var(--sched-text);
+}
+
+.cancelDeleteButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.confirmDeleteButton {
+  border: none;
+  background: #ef4444;
+  color: #fff;
+}
+
+.confirmDeleteButton:hover {
+  opacity: 0.9;
+}
+
+.createButton {
+  margin-top: 24px;
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 9px 0;
+  border: none;
+  background: var(--sched-accent);
+  color: #fff;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.createButton:hover {
+  opacity: 0.9;
+}
+
+.createButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

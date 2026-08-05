@@ -1,0 +1,379 @@
+.scrollContainer {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Matches WeekViewVertical.module.css's own --week-day-boundary-color —
+     a touch darker than the ordinary thin gridlines (--sched-border-horizontal
+     mixes --border in at only 35% strength), not Scheduler.module.css's
+     shared --sched-border-strong (70% border / 30% text, which reads as
+     near-black, and is also used by the scrollbar thumb/drawer/toolbar
+     borders elsewhere, so tuning it here would affect those too). */
+  --timeline-day-boundary-color: color-mix(in srgb, var(--sched-border) 50%, var(--sched-surface) 50%);
+  /* Focused on hover (see TimelineView.tsx) so arrow/Page/Home/End keys can
+     scroll it immediately, no click required. No focus ring at all: a
+     :focus-visible ring was tried here to distinguish real keyboard (Tab)
+     focus from this hover-triggered one, but browsers' focus-visible
+     heuristics still show it for the programmatic .focus() call from
+     onMouseEnter — the ring (offset -2px on all sides) was appearing on
+     every hover, just partly hidden behind the sticky header row and
+     resource column, leaving only its right and bottom edges visible as two
+     stray lines. */
+  outline: none;
+  /* Reserves the vertical scrollbar's width whether or not it's actually
+     needed — otherwise switching to a view whose content is tall enough to
+     scroll (e.g. Month) makes the scrollbar appear and shove everything else
+     left by its width, which wasn't reserved space before. */
+  scrollbar-gutter: stable;
+  position: relative;
+  background: var(--sched-surface);
+  border-radius: 0 0 var(--sched-radius) var(--sched-radius);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sched-border) transparent;
+  /* Matches Scheduler.module.css's .schedulerRoot / index.css's
+     .theme-transition — same speed for a dark/light toggle everywhere. */
+  transition: background-color 300ms ease-in-out;
+  /* Named group for the View Transitions crossfade below — this element
+     remounts fresh whenever Day/Week vs. Month is switched (Scheduler.tsx
+     conditionally renders one or the other), and the browser uses this name
+     to snapshot the outgoing and incoming instances for a real crossfade
+     (see Scheduler.tsx's handleViewChange for the JS half of this). */
+  view-transition-name: scheduler-view;
+}
+
+/* Fallback for browsers without View Transitions support (Firefox, as of
+   writing) — a real crossfade needs the old view fading out at the same
+   time the new one fades in, which a same-element CSS animation can't do
+   (the old element is already gone by the time this one mounts), but a
+   fade-plus-rise on just the incoming view is better than a flat instant
+   swap. `@supports not (view-transition-name: none)` is a reasonable CSS-
+   only proxy for "the browser doesn't understand view-transition-name at
+   all," since that's the same engines that lack the JS API. */
+@supports not (view-transition-name: none) {
+  .scrollContainer {
+    animation: viewFadeIn 500ms ease-out;
+  }
+}
+
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollContainer {
+    /* The View Transitions crossfade itself is disabled globally for
+       reduced motion — see Scheduler.module.css. */
+    animation: none;
+  }
+}
+
+.scrollContainer::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb {
+  background: var(--sched-border);
+  border-radius: 8px;
+}
+
+.scrollContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--sched-text-muted);
+}
+
+/* A bare `::-webkit-scrollbar-button { display: none }` doesn't hide the
+   arrows in every Chromium build — some render them as a single combined
+   button, others as separate start/end increment/decrement buttons.
+   Covering both sub-state forms is what reliably hides them everywhere. */
+.scrollContainer::-webkit-scrollbar-button:single-button,
+.scrollContainer::-webkit-scrollbar-button:start:decrement,
+.scrollContainer::-webkit-scrollbar-button:end:increment,
+.scrollContainer::-webkit-scrollbar-button:vertical:start:increment,
+.scrollContainer::-webkit-scrollbar-button:vertical:end:decrement,
+.scrollContainer::-webkit-scrollbar-button:horizontal:start:increment,
+.scrollContainer::-webkit-scrollbar-button:horizontal:end:decrement {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* No min-height here on purpose: if the grid only fills a fraction of the
+   scroll area (few resources), it should stay exactly as tall as its rows —
+   otherwise `.bodyRow`'s flex:1 stretches it to fill the leftover space,
+   which in turn stretches `.resourceColumn` (unconstrained height) taller
+   than `.canvas` (fixed height), leaving mismatched gridlines trailing past
+   the last real row. */
+.grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.headerRow {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.cornerCell {
+  flex: 0 0 auto;
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 14px 8px;
+  box-sizing: border-box;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sched-text-muted);
+  background: var(--sched-header-bg);
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  transition: background-color 300ms ease-in-out, border-color 300ms ease-in-out;
+}
+
+.timeHeader {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  background: var(--sched-header-bg);
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  transition: background-color 300ms ease-in-out, border-color 300ms ease-in-out;
+}
+
+.dayRow {
+  display: flex;
+}
+
+.dayCell {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--sched-text);
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.dayCell:hover {
+  background: var(--sched-row-hover);
+}
+
+.hourRow {
+  display: flex;
+}
+
+.hourGroup {
+  display: flex;
+  box-sizing: border-box;
+}
+
+.hourCell {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  text-align: center;
+  font-size: 11px;
+  color: var(--sched-text-muted);
+  padding: 6px 0;
+}
+
+.bodyRow {
+  display: flex;
+  position: relative;
+  flex: 1;
+}
+
+.resourceColumn {
+  flex: 0 0 auto;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: var(--sched-surface);
+  border-right: 1px solid var(--sched-border-horizontal);
+  transition: background-color 300ms ease-in-out, border-color 300ms ease-in-out;
+}
+
+.resourceCell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Right padding reserves room for .rowExpandButton, which sits pinned to
+     this cell's top-right corner (see below) rather than as a normal flex
+     sibling of the title. */
+  padding: 0 40px 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sched-text);
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  box-sizing: border-box;
+  transition: color 300ms ease-in-out, border-color 300ms ease-in-out, height 200ms ease-in-out;
+}
+
+.resourceTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Base look shared by the per-row chevron toggle and the "expand/collapse
+   all" button in the corner cell — ghost icon button, blue on hover like the
+   rest of the app's controls, held solid blue (rather than a red "undo" cue)
+   while expanded since collapsing isn't destructive. */
+.expandButton {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text-muted);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+/* Row-level toggle only — pinned to this cell's top-right corner via
+   absolute positioning rather than sitting inline with (and vertically
+   centered alongside) the title. A room's own row height changes when it
+   expands/collapses, so a vertically-centered button would visibly jump to
+   a new position on every toggle — you'd have to re-locate it to click
+   again. Anchored to a fixed corner, it never moves. */
+.rowExpandButton {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* "Expand/collapse all" toggle in the corner cell — same right: 4px inset as
+   .rowExpandButton so it lines up in the same vertical column as every
+   row's own chevron below it; smaller than the per-row buttons since this
+   one sits in the header among smaller text rather than a full-size row. */
+.expandAllButton {
+  position: absolute;
+  right: 4px;
+  bottom: 8px;
+  width: 22px;
+  height: 22px;
+}
+
+.expandButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.expandButton[aria-pressed='true'] {
+  color: var(--sched-accent);
+}
+
+.canvas {
+  position: relative;
+  flex: 0 0 auto;
+  background: var(--sched-surface);
+  transition: background-color 300ms ease-in-out, height 200ms ease-in-out;
+}
+
+.rowBackground {
+  position: absolute;
+  left: 0;
+  display: flex;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  cursor: pointer;
+  touch-action: none;
+  /* background-color stays fast for the row hover highlight; border-color
+     is theme-driven and needs to match the page-wide 300ms — there's one of
+     these per resource row, so left at its own instant default it snaps
+     mid-fade across the whole grid while everything else is still animating.
+     top/height animate a row's own expand/collapse, and every row below it
+     shifting to make room. */
+  transition: background-color 120ms ease, border-color 300ms ease-in-out, top 200ms ease-in-out, height 200ms ease-in-out;
+}
+
+.rowBackground:hover {
+  background-color: var(--sched-row-hover);
+}
+
+.rowDayGroup {
+  display: flex;
+  box-sizing: border-box;
+}
+
+/* Real bordered cells (not a background pattern) — identical box model to
+   `TimeHeader`'s `.hourCell`/`.hourGroup`, so the hour/day boundary lines in
+   the header and in each row are laid out by the same mechanism and can
+   never round independently and drift apart. The finer 30-min tick is a
+   background image confined to a single cell, sized to `slotWidthPx`
+   exactly (a direct pass-through of the already-rounded whole-pixel slot
+   width, not a derived/rounded value), so it can't drift either. */
+.rowHourCell {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  border-right: 1px solid var(--sched-border-horizontal);
+  /* One of these per hour per day per resource row — by far the most
+     numerous themed-color element in the app, so an un-transitioned border
+     here is what made the whole grid look like it was still catching up
+     after the header/background had already finished fading. */
+  transition: border-color 300ms ease-in-out;
+}
+
+/* The boundary between one day and the next, mirroring
+   WeekViewVertical.module.css's own .dayBoundary — applied only to the LAST
+   .rowHourCell of each day, in every resource row (the "rooms axis"), NOT
+   to TimeHeader's own .dayCell/.hourCell tiers above — this divider starts
+   exactly at the top of the resource rows rather than reaching up into the
+   sticky header. Shares .rowHourCell's own box model (so it can't round or
+   drift independently of the regular thin gridlines) and is placed after
+   .rowHourCell in source order so it wins the (otherwise tied) cascade over
+   that class's own border-right. Unlike the vertical view's own day
+   boundary, no separate standalone canvas element is needed here: days are
+   laid out along the continuous TIME axis in this view, and no single
+   event's own start/end time can span across a day boundary the way a
+   squished event can span across a room boundary there, so a plain border
+   never risks being covered by an edge-to-edge event sitting on top of it. */
+.dayBoundary {
+  border-right: 2px solid var(--timeline-day-boundary-color);
+}
+
+.selectionOverlay {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  background: color-mix(in srgb, var(--sched-accent) 20%, transparent);
+  border: 1.5px dashed var(--sched-accent);
+  border-radius: var(--sched-radius-sm);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.nowLine {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  background: var(--sched-now-line);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.nowLine::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sched-now-line);
+}

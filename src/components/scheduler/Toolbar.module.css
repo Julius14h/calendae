@@ -1,0 +1,113 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--sched-header-bg);
+  border-bottom: 1px solid var(--sched-border);
+  border-radius: var(--sched-radius) var(--sched-radius) 0 0;
+  flex-wrap: wrap;
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--sched-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todayButton,
+.iconButton,
+.viewButton {
+  font: inherit;
+  border: 1px solid var(--sched-border);
+  background: var(--sched-surface);
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.todayButton {
+  padding: 6px 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.iconButton {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  padding: 0;
+}
+
+.todayButton:hover,
+.iconButton:hover,
+.viewButton:hover {
+  background: var(--sched-row-hover);
+  border-color: var(--sched-border-strong);
+}
+
+.iconButtonActive {
+  background: var(--sched-accent);
+  color: #fff;
+  border-color: var(--sched-accent);
+}
+
+.iconButtonActive:hover {
+  background: var(--sched-accent);
+  border-color: var(--sched-accent);
+}
+
+.viewGroup {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--sched-surface);
+  border: 1px solid var(--sched-border);
+  border-radius: var(--sched-radius-sm);
+}
+
+.viewButton {
+  border: none;
+  padding: 6px 14px;
+  font-size: 16px;
+  font-weight: 500;
+  background: transparent;
+}
+
+.viewButtonActive {
+  background: var(--sched-accent);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+}
+
+.viewButtonActive:hover {
+  background: var(--sched-accent);
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    justify-content: center;
+  }
+  .title {
+    width: 100%;
+    text-align: center;
+    order: 3;
+    margin: 4px 0 0;
+  }
+}

@@ -1,0 +1,435 @@
+.weekViewVertical {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  /* A touch darker than the ordinary thin gridlines (--sched-border-horizontal,
+     which mixes --border in at only 35% strength) — not Scheduler.module.css's
+     own --sched-border-strong (70% border / 30% text), which read as too
+     dark/near-black rather than grey. Bumping that same mix up to 50%
+     keeps it clearly the same family of grey, just a little bolder, so the
+     day boundary is distinct by both width (2px vs the regular 1px
+     dividers) and a slightly heavier shade. */
+  --week-day-boundary-color: color-mix(in srgb, var(--sched-border) 50%, var(--sched-surface) 50%);
+}
+
+.scrollContainer {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  outline: none;
+  scrollbar-gutter: stable;
+  position: relative;
+  background: var(--sched-surface);
+  border-radius: 0 0 var(--sched-radius) var(--sched-radius);
+  scrollbar-width: thin;
+  scrollbar-color: var(--sched-border) transparent;
+  transition: background-color 300ms ease-in-out;
+  /* Same crossfade group TimelineView.module.css's own .scrollContainer
+     uses — this and that one are never mounted at the same time (Scheduler.tsx
+     renders exactly one of them for `view === 'week'`), so sharing the name
+     gives toggling orientation the same View Transitions crossfade Day/Week/
+     Month switches already get, for free. */
+  view-transition-name: scheduler-view;
+}
+
+@supports not (view-transition-name: none) {
+  .scrollContainer {
+    animation: viewFadeIn 500ms ease-out;
+  }
+}
+
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollContainer {
+    animation: none;
+  }
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky top: day + room-header labels. Transposed from TimelineView's own
+   .headerRow (sticky top, containing a sticky-left corner + the horizontal
+   time header) — same technique, day/room in the header row here instead of
+   hour/day.
+   z-index 15 is deliberately above every scrolling canvas element beneath
+   it (.hourGutter: 10, .dayBoundaryLine/.cornerCell: 6, events up to 5 while
+   dragging, .nowLine: 4, .availabilityBand: 1) — those values were each
+   chosen only relative to OTHER canvas content (so an event stays above a
+   day boundary, etc.), not with this sticky header in mind. Whichever of
+   them was highest (previously .hourGutter's 10, above this row's old z:5)
+   would paint on top of this header instead of correctly disappearing
+   behind it once scrolled underneath — visible as the hour gutter's time
+   label, or the day-boundary line, bleeding up into the header row the
+   more you scrolled down. A sticky header must outrank literally
+   everything that can scroll beneath it, not just some of it. */
+.headerRow {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+
+/* A flex column mirroring .dayGroup's own stacked dayLabel + roomHeaderRow
+   structure (see the invisible .dayLabel spacer rendered inside it) —
+   without this split, the border/background below had to cover the
+   corner's WHOLE height in one box (day-label row + room row combined),
+   so its border-right sat noticeably taller than every other vertical
+   divider in the header (those only ever span the room row). */
+.cornerCell {
+  flex: 0 0 auto;
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: var(--sched-header-bg);
+  transition: background-color 300ms ease-in-out;
+}
+
+/* The bordered/backgrounded portion — sized to whatever's left below the
+   .dayLabel spacer above it (flex: 1, matching .roomHeaderRow's own
+   height exactly, for the same reason .roomHeaderRow itself is never
+   given an explicit height), so its border-right/border-bottom line up
+   with every other room's own header-cell border. */
+.cornerBottomCell {
+  position: relative;
+  flex: 1;
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  border-right: 1px solid var(--sched-border-horizontal);
+  transition: border-color 300ms ease-in-out;
+}
+
+/* Positioned absolutely within .cornerBottomCell (a valid containing
+   block — position: relative) rather than laid out via flex, since the
+   corner only ever holds this one optional button — centered near the
+   bottom to land at roughly the same height as each room's own per-cell
+   expand button below the room name (see .roomHeaderContent), matching
+   TimelineView.module.css's own .expandAllButton placement convention for
+   its (horizontal-mode) equivalent corner button. */
+.expandAllButton {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+}
+
+.dayGroup {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  background: var(--sched-header-bg);
+  /* Animates a day-group's own total width growing/shrinking when a room
+     within it expands/collapses (see WeekViewVertical's per-day expand
+     state) — every day-group after the one that changed shifts along with
+     it, via the ordinary flex-row reflow, no extra transition needed there. */
+  transition: background-color 300ms ease-in-out, width 220ms ease-in-out;
+}
+
+.dayLabel {
+  padding: 8px 4px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--sched-text);
+}
+
+.roomHeaderRow {
+  display: flex;
+}
+
+/* Not a centered cell — `align-items: flex-start` plus a fixed-width
+   `.roomHeaderContent` inner block (sized to the room's own COLLAPSED
+   width, not however wide the cell currently is) is deliberate: when a room
+   expands, this outer cell grows wider to fit the extra lanes, but centering
+   title+button across that full, growing width would slide them rightward
+   as the room expands and back leftward as it collapses — exactly the
+   "hunting for the button" problem. Pinning the inner block to the left
+   edge at a fixed width means expanding only ever adds space to the RIGHT
+   of the title/button, so their on-screen position never moves regardless
+   of expand state. */
+/* min-height reserves room for the expand button (~54px tall with it,
+   ~46px without) UNCONDITIONALLY — every room in a day-group, whether it
+   needs the button or not. Rooms that don't need it just render with the
+   floor's empty bottom space. Without this, only the room(s) that actually
+   need a button dictate a taller row for their own day, so a day WITH a
+   squished room ends up with a taller .roomHeaderRow than a day without
+   one — different days sit in the same flex-stretched `.headerRow`, so the
+   *outer* day-group boxes still end up equal height (default flex stretch
+   there), but each day's own room-header content (and its own
+   border-bottom below) stays at its own natural, DIFFERENT height,
+   producing a visibly stepped gridline where a button-having day's line
+   sits lower than its neighbors'. Reserving the same floor everywhere
+   makes every day's row genuinely the same height already, so there's
+   nothing left for that stretch to paper over unevenly. */
+.roomHeaderCell {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  min-height: 55px;
+  padding: 8px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sched-text-muted);
+  border-right: 1px solid var(--sched-border-horizontal);
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  transition: width 220ms ease-in-out, border-color 300ms ease-in-out;
+}
+
+/* `justify-content: flex-start` (not `center`) is deliberate: centering a
+   1-child block (title only) and a 2-child block (title + button) as a
+   group puts each title at a DIFFERENT y position depending on whether its
+   own button happens to render — flex-start pins every title to the same
+   fixed offset from the top regardless, so titles line up across every
+   room whether or not that particular room needs the button below it. */
+.roomHeaderContent {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 0 6px;
+  text-align: center;
+}
+
+.roomHeaderTitle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Matches TimelineView.module.css's own .expandButton visual language
+   (transparent at rest, row-hover background + accent color on hover,
+   accent color while pressed) so the toggle reads as the same control in
+   either orientation, even though placement differs (stacked below the
+   room name here vs. pinned to a row's top-right corner there — this
+   cell's own 130px width doesn't have room to spare for a corner overlay
+   without covering the name). */
+.expandButton {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text-muted);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.expandButton:hover,
+.expandButton:focus-visible {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.expandButton:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+.expandButton[aria-pressed='true'] {
+  color: var(--sched-accent);
+}
+
+.bodyRow {
+  display: flex;
+  position: relative;
+  flex: 1;
+}
+
+/* Sticky left: hours stacked top-to-bottom, shared across every day-group.
+   Transposed from TimelineView's own .resourceColumn (sticky left, resource
+   names stacked top-to-bottom). */
+/* box-sizing: border-box is deliberate: without it, this element's own
+   border-right (unlike every room cell's, which is already border-box)
+   adds 1px OUTSIDE its specified width, making its true rendered width
+   65px instead of 64 — .cornerCell (the header's equivalent sticky-left
+   column, right above this one) has no border of its own to inflate it,
+   so it stays exactly 64px. That 1px gap in how wide the two "left gutter"
+   columns actually render is what shifted the canvas 1px right of the
+   header at every subsequent column boundary — a flat, constant offset
+   (not a growing one), since it's a single fixed discrepancy at the very
+   start of each row, not a per-column rounding drift. */
+.hourGutter {
+  flex: 0 0 auto;
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--sched-surface);
+  border-right: 1px solid var(--sched-border-horizontal);
+  transition: background-color 300ms ease-in-out, border-color 300ms ease-in-out;
+}
+
+.hourLabel {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  font-size: 11px;
+  color: var(--sched-text-muted);
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  transition: color 300ms ease-in-out, border-color 300ms ease-in-out;
+}
+
+.canvas {
+  position: relative;
+  flex: 0 0 auto;
+  background: var(--sched-surface);
+  transition: background-color 300ms ease-in-out;
+}
+
+.roomColumnBg {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  border-right: 1px solid var(--sched-border-horizontal);
+  cursor: pointer;
+  /* left/width animate a room's own expand/collapse widening its column
+     (this room), and every later room/day-group sliding over to make room
+     for it (their own left shifting) — same per-day expand state as
+     .roomHeaderCell above. */
+  transition: border-color 300ms ease-in-out, left 220ms ease-in-out, width 220ms ease-in-out;
+}
+
+.roomColumnBg:hover {
+  background-color: var(--sched-row-hover);
+}
+
+/* Real bordered hour cells — same reasoning as TimelineView's own
+   .rowHourCell: identical box model to the hour gutter's own .hourLabel, so
+   both are laid out by the same mechanism and can't round independently and
+   drift apart. border-bottom here (not border-right) since hours tile
+   vertically in this orientation. */
+.hourCell {
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--sched-border-horizontal);
+  transition: border-color 300ms ease-in-out;
+}
+
+.availabilityBand {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1;
+  animation: bandFadeIn 450ms ease-out;
+  transition: opacity 450ms ease-out, left 220ms ease-in-out, width 220ms ease-in-out;
+}
+
+@keyframes bandFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .availabilityBand {
+    animation: none;
+    transition: none;
+  }
+}
+
+.availabilityPreferred {
+  background: rgba(34, 197, 94, 0.22);
+  border-left: 1px solid rgba(34, 197, 94, 0.5);
+  border-right: 1px solid rgba(34, 197, 94, 0.5);
+}
+
+.availabilityAvailable {
+  background: rgba(234, 179, 8, 0.22);
+  border-left: 1px solid rgba(234, 179, 8, 0.5);
+  border-right: 1px solid rgba(234, 179, 8, 0.5);
+}
+
+.availabilityUnavailable {
+  background: rgba(239, 68, 68, 0.16);
+  border-left: 1px solid rgba(239, 68, 68, 0.35);
+  border-right: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+/* "Now" line — a horizontal bar (transposed from TimelineView's own .nowLine
+   vertical bar), confined to just the one day-group it belongs to rather
+   than spanning the whole canvas, since every day-group has its own
+   independent time origin here. */
+.nowLine {
+  position: absolute;
+  left: 0;
+  height: 2px;
+  background: var(--sched-now-line);
+  pointer-events: none;
+  z-index: 4;
+  transition: left 220ms ease-in-out, width 220ms ease-in-out;
+}
+
+.nowLine::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sched-now-line);
+}
+
+/* The boundary between one day-group and the next, in the HEADER only —
+   applied to the last room's header cell in place of the ordinary 1px
+   room-to-room divider it otherwise draws. Deliberately thicker AND a
+   stronger color (not just wider) than an ordinary room boundary:
+   misreading which room belongs to which day here means assigning an event
+   to the wrong day entirely, so this needs to read as a different kind of
+   line even at a quick glance, not just a bolder version of the same one.
+   Comes after .roomHeaderCell in source order so it wins the (otherwise
+   tied) cascade. The canvas body below uses a separate `.dayBoundaryLine`
+   element instead of this same border-based approach — see its own comment
+   for why. */
+.dayBoundary {
+  border-right: 2px solid var(--week-day-boundary-color);
+}
+
+/* The same between-day boundary, drawn in the CANVAS as its own standalone
+   element rather than a border on the last room column's background. A
+   border there would sit *under* an edge-to-edge event (the event is a
+   separate, opaque, higher-stacked box covering the same pixels) and get
+   visually swallowed by it — exactly the "event overlaps the border"
+   problem this avoids. Given a z-index above every EventBlock state
+   (.dragging tops out at 5 — see EventBlock.module.css), this always paints
+   on top instead, so an event's edge reads as stopping cleanly at the
+   boundary regardless of what's rendered beneath it. */
+.dayBoundaryLine {
+  position: absolute;
+  top: 0;
+  background: var(--week-day-boundary-color);
+  pointer-events: none;
+  z-index: 6;
+  transition: left 220ms ease-in-out;
+}
+
+/* Expand/collapse (see WeekViewVertical's per-day expand state) animates
+   width/left across the header, canvas, and event elements above — this
+   turns all of that off at once for anyone who's asked for less motion,
+   collapsing straight to the end state instead of sliding into it. */
+@media (prefers-reduced-motion: reduce) {
+  .dayGroup,
+  .roomHeaderCell,
+  .roomColumnBg,
+  .nowLine,
+  .dayBoundaryLine {
+    transition: none;
+  }
+}

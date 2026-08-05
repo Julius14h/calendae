@@ -1,0 +1,73 @@
+.schedulerRoot {
+  /* Aliases onto the app's own theme variables (see src/styles/theme.css)
+     instead of a separate hardcoded palette — same background/text/border
+     everywhere, and dark mode follows the app's [data-theme='dark'] rule
+     automatically with no duplicate override block needed here. */
+  --sched-accent: var(--primary);
+  --sched-surface: var(--background);
+  --sched-header-bg: var(--background);
+  --sched-row-hover: color-mix(in srgb, var(--primary) 6%, var(--background) 94%);
+  --sched-dim-bg: color-mix(in srgb, var(--text) 4%, var(--background) 96%);
+  --sched-text: var(--scheduler-text);
+  --sched-text-muted: var(--scheduler-text-muted);
+  --sched-border: var(--border);
+  --sched-border-horizontal: var(--scheduler-border-horizontal);
+  --sched-border-strong: color-mix(in srgb, var(--border) 70%, var(--text) 30%);
+  --sched-now-line: #ef4444;
+  --sched-radius: 16px;
+  --sched-radius-sm: 10px;
+
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: var(--sched-radius);
+  background: var(--sched-surface);
+  color: var(--sched-text);
+  /* Same 300ms ease-in-out as the app header/body (see index.css's
+     .theme-transition) — otherwise a dark/light toggle fades the header
+     while this snaps instantly, which reads as two different speeds. */
+  transition: background-color 300ms ease-in-out, color 300ms ease-in-out;
+  /* Uses the host app's --sans if defined (keeping page-wide font control in
+     one place), falling back to a system stack so this stays reusable on
+     its own. */
+  font-family: var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  overflow: hidden;
+}
+
+/* Drawer (a sibling, animated via its own width) sits to the left; this
+   column holds the toolbar + view and simply takes the remaining space, so
+   opening the drawer pushes it over rather than overlaying it. */
+.mainColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* View Transitions crossfade for the "scheduler-view" group (TimelineView's
+   .scrollContainer / MonthView's .monthView — see either for the JS half in
+   Scheduler.tsx's handleViewChange). The browser's own default duration
+   reads as quick/subtle; this is the "long, smooth, Google-Calendar-like"
+   speed that was actually asked for. */
+::view-transition-old(scheduler-view),
+::view-transition-new(scheduler-view) {
+  animation-duration: 500ms;
+  animation-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The standard way to fully turn off View Transitions animations — unlike
+     `view-transition-name: none` on a single element, this also covers the
+     document-root crossfade the API still runs even when no specific
+     element opts in with its own name. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

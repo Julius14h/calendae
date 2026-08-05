@@ -1,0 +1,180 @@
+@import '../styles/theme.css';
+
+.app-header {
+  display: flex;
+  align-items: center;
+  /* Not space-between: with 3 children, that recalculates the gap around
+     .app-header-nav whenever ITS width changes (the date title grows/shrinks
+     as you navigate), which shifts the whole group sideways — including the
+     arrows, even though they sit before the variable-width title. Normal
+     left-to-right flow means nothing before a resizing element ever moves;
+     .app-header-right uses margin-left: auto to still land on the far right. */
+  gap: 16px;
+  min-height: 46px;
+  /* Matches .main-content's left/right padding so the header's left/right
+     content lines up with the scheduler panel's edges below it. */
+  padding: 8px 24px;
+  background: var(--page-bg);
+  border-bottom: 0px;
+  flex-wrap: wrap;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-header-logo {
+  flex: 0 0 auto;
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.app-header-brand {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--title-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--header-date-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: 4px;
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.app-header-btn,
+.app-header-icon-btn,
+.app-header-view-btn {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--background);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.app-header-btn,
+.app-header-view-btn {
+  color: var(--header-btn-text);
+}
+
+.app-header-icon-btn {
+  color: var(--text);
+}
+
+/* Hamburger, Today, prev/next, and theme toggle: plain icons/text directly
+   on the header background, not boxed buttons — no fill/border, colored the
+   same as the date title. */
+.app-header-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--header-date-text);
+}
+
+.app-header-btn {
+  padding: 6px 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.app-header-icon-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.app-header-btn:hover,
+.app-header-icon-btn:hover,
+.app-header-view-btn:hover {
+  background: var(--surface);
+  border-color: var(--primary);
+}
+
+.app-header-ghost:hover {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border-color: transparent;
+}
+
+.app-header-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Accent-blue icon, no filled background — applied while the hamburger's
+   drawer is open. The pencil/lock toggle stays plain grey like every other
+   ghost icon regardless of state; its icon shape alone carries edit vs. lock. */
+.app-header-ghost-active,
+.app-header-ghost-active:hover {
+  background: transparent;
+  color: var(--primary);
+  border-color: transparent;
+}
+
+/* Underline tabs rather than a filled segmented control — only the active
+   view carries color, via its own border-bottom rather than a pill fill. */
+.app-header-views {
+  display: flex;
+  gap: 18px;
+  padding: 0 2px;
+}
+
+.app-header-view-btn {
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 4px 1px 6px;
+  font-size: 14.5px;
+  font-weight: 700;
+  background: transparent;
+  border-radius: 0;
+  transition: color 200ms ease, border-color 200ms ease;
+}
+
+.app-header-view-btn:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+}
+
+.app-header-view-btn-active,
+.app-header-view-btn-active:hover {
+  background: transparent;
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+@media (max-width: 720px) {
+  .app-header {
+    justify-content: center;
+  }
+  .app-header-title {
+    display: none;
+  }
+}

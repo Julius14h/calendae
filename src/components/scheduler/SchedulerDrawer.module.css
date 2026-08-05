@@ -1,0 +1,631 @@
+.drawer {
+  /* One radius for every control in this panel (buttons, inputs, swatches,
+     checkboxes) — previously several nearby values (var(--sched-radius-sm)
+     straight, minus 2px, etc.) drifted apart from each other. */
+  --drawer-radius: 6px;
+
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  background: var(--sched-header-bg);
+  /* width stays fast (the open/close slide); background-color gets the
+     slower, page-wide theme-toggle speed instead. */
+  transition: width 220ms ease, background-color 300ms ease-in-out;
+}
+
+.drawerOpen {
+  width: 290px;
+}
+
+/* Fixed width regardless of the outer wrapper's animating width, so content
+   doesn't reflow/wrap mid-transition — the outer `.drawer`'s overflow:hidden
+   clips it like a curtain reveal. */
+.content {
+  width: 290px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sched-border-strong) transparent;
+}
+
+.content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--sched-border-strong);
+  border-radius: 8px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--sched-text-muted);
+}
+
+.content::-webkit-scrollbar-button:single-button,
+.content::-webkit-scrollbar-button:start:decrement,
+.content::-webkit-scrollbar-button:end:increment,
+.content::-webkit-scrollbar-button:vertical:start:increment,
+.content::-webkit-scrollbar-button:vertical:end:decrement,
+.content::-webkit-scrollbar-button:horizontal:start:increment,
+.content::-webkit-scrollbar-button:horizontal:end:decrement {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sched-text-muted);
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selectAllButton {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--sched-accent);
+  cursor: pointer;
+}
+
+.selectAllButton:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.selectAllButton:disabled {
+  color: var(--sched-text-muted);
+  cursor: default;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sched-text-muted);
+  margin-top: 4px;
+}
+
+/* Business hours range — a single pill-shaped control (filled background,
+   no border) with the two <select>s and a plain-text "to" all inside it, a
+   deliberate one-off matching a specific reference design rather than the
+   general form-control convention. */
+.hourRangeBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--sched-dim-bg);
+}
+
+.hourRangeSelectWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hourRangeSelect {
+  appearance: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  padding: 2px 18px 2px 0;
+  cursor: pointer;
+  border-radius: var(--drawer-radius);
+  transition: color 120ms ease;
+}
+
+.hourRangeSelect option {
+  background: var(--sched-surface);
+  color: var(--sched-text);
+}
+
+.hourRangeSelect:hover,
+.hourRangeSelect:focus-visible {
+  color: var(--sched-accent);
+}
+
+.hourRangeSelect:focus-visible {
+  outline: none;
+}
+
+.hourRangeChevron {
+  position: absolute;
+  right: 0;
+  color: var(--sched-text-muted);
+  pointer-events: none;
+  transition: color 120ms ease;
+}
+
+.hourRangeSelect:hover ~ .hourRangeChevron,
+.hourRangeSelect:focus-visible ~ .hourRangeChevron {
+  color: var(--sched-accent);
+}
+
+.hourRangeTo {
+  flex: 0 0 auto;
+  font-size: 14px;
+  color: var(--sched-text-muted);
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Import/Load are ghost (secondary) buttons; Save/Export get the solid
+   .actionButtonPrimary modifier below — four identically-boxed buttons of
+   equal weight made the whole row read as one big undifferentiated block. */
+.actionButton {
+  font: inherit;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--drawer-radius);
+  cursor: pointer;
+  padding: 9px 0;
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.actionButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.actionButtonPrimary {
+  background: var(--sched-accent);
+  color: #fff;
+}
+
+.actionButtonPrimary:hover {
+  background: color-mix(in srgb, var(--sched-accent) 88%, black 12%);
+  color: #fff;
+}
+
+.select {
+  font: inherit;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--drawer-radius);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+  padding: 7px 9px;
+  font-size: 15px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Once a <select>'s own `color` is author-set, Chrome stops applying its
+   automatic dark-mode listbox and falls back to a plain light popup unless
+   the <option>s are explicitly styled too — this is what keeps the open
+   dropdown list itself (not just the closed box) matching the theme. */
+.select option {
+  background: var(--sched-surface);
+  color: var(--sched-text);
+}
+
+.select:hover {
+  border-color: var(--sched-border);
+}
+
+.select:focus-visible {
+  border-color: var(--sched-accent);
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+/* Underline tabs — same logic as the Day/Week/Month tabs in Header.css:
+   only the active option carries color, via its own border-bottom, rather
+   than a filled pill. No container background/border at all anymore. */
+.segmented {
+  display: flex;
+  gap: 18px;
+}
+
+.segmentButton {
+  font: inherit;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 4px 1px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: 0;
+  cursor: pointer;
+  transition: color 200ms ease, border-color 200ms ease;
+}
+
+.segmentButton:hover {
+  background: transparent;
+  color: var(--sched-accent);
+}
+
+.segmentButtonActive,
+.segmentButtonActive:hover {
+  background: transparent;
+  color: var(--sched-accent);
+  border-bottom-color: var(--sched-accent);
+}
+
+/* Bordered container wrapping the rows, dividers between them via the
+   adjacent-sibling border rather than :last-child exclusion — same pattern
+   as InstructorViewDialog's .boxList/.boxRow. */
+.itemList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--sched-border-horizontal);
+  border-radius: var(--drawer-radius);
+  overflow: hidden;
+}
+
+/* Bounded, independently-scrollable block — so a long roster (many rooms or
+   instructors) scrolls in place instead of stretching the whole drawer. */
+.scrollableList {
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sched-border-strong) transparent;
+}
+
+.scrollableList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollableList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollableList::-webkit-scrollbar-thumb {
+  background: var(--sched-border-strong);
+  border-radius: 8px;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.itemRow + .itemRow {
+  border-top: 1px solid var(--sched-border-horizontal);
+}
+
+.itemLabel {
+  font-size: 15px;
+  color: var(--sched-text);
+}
+
+.emptyState {
+  color: var(--sched-text-muted);
+}
+
+/* flex: 0 0 auto rather than flex: 1 — this button only covers its own text,
+   not the whole row's remaining width, so clicking to the right of the name
+   (the "whitespace") lands on the row's own click-to-toggle instead. */
+.instructorRowButton {
+  flex: 0 0 auto;
+  max-width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--drawer-radius);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.instructorRowButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+/* Class type rows only — the "..." trigger is hidden until the row is
+   hovered/focused (or its popover is open), so it doesn't compete with the
+   label at rest. */
+.classTypeRow {
+  position: relative;
+  cursor: pointer;
+}
+
+.classTypeRow:hover,
+.instructorItemRow:hover {
+  background: var(--sched-row-hover);
+}
+
+.instructorItemRow {
+  cursor: pointer;
+}
+
+.colorMenuWrapper {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+}
+
+/* Same role as .colorMenuWrapper (positions the trigger + popover, tagged
+   data-color-menu for the outside-click guard), but without margin-left:auto
+   — used in .addRow, where the swatch is the first item, not pushed to the
+   end of a label row. */
+.inlineColorMenuWrapper {
+  position: relative;
+  display: flex;
+}
+
+.classTypeMoreButton {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text-muted);
+  border-radius: var(--drawer-radius);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.classTypeRow:hover .classTypeMoreButton,
+.classTypeMoreButton:focus-visible,
+.classTypeMoreButton[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.classTypeMoreButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.classTypeMoreButton:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+/* Position (top/right) is set inline via JS-measured coordinates from the
+   "..." button, `position: fixed` so it isn't clipped by, or counted toward
+   the scrollable height of, .itemList/.content's own overflow — same
+   reasoning as InstructorViewDialog's .moreMenu. */
+.colorMenu {
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--sched-surface);
+  border: 1px solid var(--sched-border-horizontal);
+  border-radius: var(--drawer-radius);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+}
+
+.colorSwatchGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.colorSwatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 5px;
+  background: var(--swatch-color);
+  cursor: pointer;
+  transition: transform 100ms ease;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorSwatch[data-selected='true'] {
+  box-shadow: 0 0 0 2px var(--sched-surface), 0 0 0 3.5px var(--swatch-color);
+}
+
+.colorSwatch:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+.colorWheelButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 8px;
+  border: 1px dashed var(--sched-border-strong);
+  border-radius: var(--drawer-radius);
+  background: transparent;
+  color: var(--sched-text-muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.colorWheelButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+  border-color: var(--sched-accent);
+}
+
+/* The real <input type="color"> behind the "..." button — visually hidden
+   (not display:none, so it can still be .click()-ed) rather than overlaid on
+   the dot, since the dot itself always stays the visibility toggle now. */
+.hiddenColorInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.textInput {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 15px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--drawer-radius);
+  transition: border-color 120ms ease;
+}
+
+.textInput:hover {
+  border-color: var(--sched-border);
+}
+
+.textInput:focus-visible {
+  border-color: var(--sched-accent);
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+/* "Add room" / "Add class type" — a plain blue plus icon (rounded stroke caps, so it
+   reads as "curved" rather than a flat typed "+"), no filled button
+   background, matching the ghost-button language already used elsewhere
+   in the header/toolbar rather than the solid accent squares. */
+.addButtonGhost {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-accent);
+  border-radius: var(--drawer-radius);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.addButtonGhost:hover {
+  background: var(--sched-row-hover);
+}
+
+.addButtonGhost:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+/* One box per row doing double duty as a visibility toggle — outline when
+   hidden, filled when shown (with the row's own color via --row-color, or
+   the accent color for rows with nothing to fill it with, e.g. instructors)
+   — instead of a native checkbox (whose OS-drawn check glyph is what that
+   stray "J" turned out to be) plus a separate swatch square next to it.
+   Square rather than circular on purpose: a row of dots read as too far
+   from the "box" affordance a toggle control implies.
+
+   Class Type rows (including the "add new class type" row) all keep this as
+   a plain visibility toggle / color preview — color editing lives entirely
+   in a separate preset-color popover (see .classTypeMoreButton and
+   .newClassTypeDot below), never as a mode this element itself switches
+   into. */
+.dot {
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--sched-border-strong);
+  background: transparent;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 150ms ease;
+}
+
+.dot:hover {
+  border-color: var(--row-color, var(--sched-accent));
+}
+
+.dot[data-active='true'] {
+  background: var(--row-color, var(--sched-accent));
+  border-color: var(--row-color, var(--sched-accent));
+}
+
+/* "New class type" swatch only — same ring EventBlock.module.css's
+   .selected uses for an event's double-click selection (surface ring, then
+   accent ring, then a soft drop shadow), but hover-only rather than
+   permanent, since this box now opens a popover on click like any other
+   button rather than living permanently "in edit mode". */
+.newClassTypeDot:hover {
+  box-shadow: 0 0 0 2px var(--sched-surface), 0 0 0 4px var(--sched-accent), 0 6px 14px rgba(15, 23, 42, 0.18);
+}
+
+/* The one persistent hit target inside .dot — fills it exactly; the actual
+   fill color and ring are drawn by the wrapper above, not this element. */
+.dotToggleButton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dotToggleButton:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
