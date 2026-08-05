@@ -231,7 +231,7 @@ function MonthMoveConflictContent({
         </button>
       </div>
 
-      <p className={styles.instructions}>Tap an open slot to place it there, or confirm the default.</p>
+      <p className={styles.instructions}>Hold and drag the event to a new slot, or confirm the default.</p>
 
       <div className={styles.legend}>
         <span className={styles.legendItem}>
