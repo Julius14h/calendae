@@ -39,13 +39,13 @@ function mostRecentMonday(date: Date): Date {
 // The 20-instructor/60-request fixture's availability is keyed to real
 // weekday names (Monday..Friday), not "today" — so events are generated
 // starting from the Monday of the current week (guaranteeing today falls
-// inside the range) across a 4-month window, matching the real-world
+// inside the range) across a 1-month window, matching the real-world
 // scheduling horizon this is meant for. allocate()'s per-request weekly cap
 // (see allocate.ts) is what makes this recur roughly once (or twice) a week
 // across the whole window instead of piling up at the very start.
 const scheduleStart = mostRecentMonday(new Date())
 const scheduleEnd = new Date(scheduleStart)
-scheduleEnd.setMonth(scheduleStart.getMonth() + 4)
+scheduleEnd.setMonth(scheduleStart.getMonth() + 1)
 
 const initialEvents: SchedulerEvent[] = allocate(
   sampleClassRequests,
