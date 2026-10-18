@@ -4,6 +4,8 @@
 
 [Open the live app →](https://calendae.vercel.app/)
 
+[There is also the demo page →](https://calendae.vercel.app/?demo)
+
 Calendae is a client-side scheduling workspace built to turn availability data from a large instructor team into a practical class schedule. It was designed around a real use case: helping coordinate schedules for 80+ instructors while balancing the rooms they prefer, their availability, and the availability of every room.
 
 ## How it works
