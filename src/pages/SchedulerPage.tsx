@@ -122,7 +122,7 @@ function reviewIssuesFromRosterWarnings(warnings: RosterWarning[]): ReviewIssue[
         id: `roster-${i}`,
         category: 'Auto-matched by email (not explicitly claimed)',
         title: `${warning.className} — ${warning.instructorName}`,
-        detail: `${warning.instructorName} never explicitly checked this class on their own Availability Form, but their email matched a real submission, so it was added to their schedule anyway — worth a quick glance, not something blocking anything.`,
+        detail: `${warning.instructorName} never explicitly checked this class on their own Availability Form, but their email matched a real submission, so it was added to their schedule.`,
         // No eventId/bookableClass — this is purely informational. The
         // class is already real and bookable (or already booked, or
         // already flagged separately if allocate() couldn't book it) —
