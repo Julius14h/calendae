@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Menu, Moon, Redo2, Sun, Undo2 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
+import { IS_DEMO_MODE } from '../lib/demo/demoMode'
 import type { SchedulerView } from './scheduler'
 import './Header.css'
 import '../index.css'
@@ -60,6 +61,11 @@ export default function Header({
           alt=""
         />
         <span className="app-header-brand">Calendae</span>
+        {IS_DEMO_MODE && (
+          <span className="app-header-demo-badge" title="Made-up instructors and classes. Edits aren't saved — reload to reset.">
+            Demo · sample data
+          </span>
+        )}
       </div>
 
       <div className="app-header-nav">

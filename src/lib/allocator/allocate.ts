@@ -4,6 +4,9 @@ import type { Class, ConsecutiveComfort, Instructor } from '../roster/types'
 
 const SLOT_MINUTES = 15
 
+/** Indexed by Date#getDay() — same strings as toLocaleDateString('en-US', { weekday: 'long' }), which availability blocks are keyed by. */
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
 // Used only when an instructor's own preferredGapMinutes is null (they
 // never gave a number, or their consecutiveComfort exempts them from
 // needing one calculated at all) — see requiredGapMinutes.
@@ -478,7 +481,10 @@ function recordRoomFitWarning(klass: Class, room: Resource, instructor: Instruct
  * of their declared weekly availability windows for that day.
  */
 function isThisInstructorAvailable(start: Date, end: Date, instructor: Instructor, index: EventIndex): boolean {
-  const dayOfWeek = start.toLocaleDateString('en-US', { weekday: 'long' })
+  // Lookup instead of toLocaleDateString — this runs for every 15-minute
+  // candidate slot, and Intl formatting at that volume dominated Generate's
+  // runtime (~7s for a 100-instructor month).
+  const dayOfWeek = WEEKDAY_NAMES[start.getDay()]
   if (instructorBookingBuffer(start, end, instructor, index)) {
     return false
   }

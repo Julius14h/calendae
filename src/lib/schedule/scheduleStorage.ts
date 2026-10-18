@@ -1,5 +1,6 @@
 import { parseScheduleState } from './saveState'
 import type { ScheduleStateData } from './saveState'
+import { IS_DEMO_MODE } from '../demo/demoMode'
 
 // Persists the SCHEDULE — never the raw source CSVs. The two survey CSVs
 // (Availability, Class Profile) only ever live in React state for the
@@ -11,6 +12,8 @@ import type { ScheduleStateData } from './saveState'
 const SCHEDULE_STORAGE_KEY = 'calendae.schedule'
 
 export function loadStoredSchedule(): ScheduleStateData | null {
+  // Demo mode always starts from its own generated schedule, never the real save.
+  if (IS_DEMO_MODE) return null
   try {
     const raw = localStorage.getItem(SCHEDULE_STORAGE_KEY)
     if (!raw) return null
@@ -22,6 +25,8 @@ export function loadStoredSchedule(): ScheduleStateData | null {
 }
 
 export function saveStoredSchedule(state: ScheduleStateData): void {
+  // Demo edits are throwaway — never overwrite the real save.
+  if (IS_DEMO_MODE) return
   try {
     localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(state))
   } catch {

@@ -42,6 +42,18 @@
   text-overflow: ellipsis;
 }
 
+/* Only rendered under `?demo` (see lib/demo/demoMode.ts). */
+.app-header-demo-badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 .app-header-nav {
   display: flex;
   align-items: center;
@@ -201,5 +213,9 @@
   }
   .app-header-title {
     display: none;
+  }
+  .app-header-demo-badge {
+    padding: 1px 6px;
+    font-size: 11px;
   }
 }

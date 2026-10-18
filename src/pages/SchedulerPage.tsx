@@ -22,6 +22,7 @@ import type { AllocationWarning, UnscheduledClassReason } from '../lib/allocator
 import { allocate } from '../lib/allocator/allocate'
 import { REAL_ROOMS } from '../lib/allocator/rooms'
 import { applyRecurrenceEdit, fillDueRecurringOccurrences, regenerateWeek } from '../lib/allocator/regenerateWeek'
+import { IS_DEMO_MODE, loadDemoCsvs } from '../lib/demo/demoMode'
 import type { RosterWarning } from '../lib/roster/buildRoster'
 import { buildRoster } from '../lib/roster/buildRoster'
 import { assignClassTypeColor } from '../lib/roster/classTypeColors'
@@ -452,10 +453,14 @@ export default function SchedulerPage() {
       alert('Import both the Instructor Availability CSV and the Class Profile CSV before generating.')
       return
     }
+    generateFromCsvs(instructorCsvText, classProfileCsvText, range)
+  }
 
+  /** Shared by handleGenerateRoster and the `?demo` load below — takes the CSV text directly since the demo's never went through React state yet. */
+  function generateFromCsvs(instructorCsv: string, classProfileCsv: string, range: { start: Date; end: Date }) {
     const { instructors, warnings: newRosterWarnings } = buildRoster(
-      parseDedupedInstructorRows(instructorCsvText),
-      parseDedupedClassProfileRows(classProfileCsvText),
+      parseDedupedInstructorRows(instructorCsv),
+      parseDedupedClassProfileRows(classProfileCsv),
     )
     setRosterWarnings(newRosterWarnings)
     const { doc: newDoc, warnings: newAllocationWarnings } = buildDocumentFromRoster(instructors, REAL_ROOMS, range)
@@ -555,6 +560,25 @@ export default function SchedulerPage() {
   // Starts true: the scheduler opens anchored on today, so today is in view
   // until onDateChange says otherwise (it doesn't fire on mount).
   const [isTodayInView, setIsTodayInView] = useState(true)
+
+  // `?demo`: stage the bundled mock CSVs (so Generate/Add New work in the
+  // demo too) and generate a schedule from them, exactly as if someone had
+  // imported both files and clicked Generate. Runs once on mount; the
+  // `cancelled` flag keeps StrictMode's double-mount from generating twice.
+  useEffect(() => {
+    if (!IS_DEMO_MODE) return
+    let cancelled = false
+    loadDemoCsvs().then(({ instructorCsvText: demoInstructorCsv, classProfileCsvText: demoClassProfileCsv }) => {
+      if (cancelled) return
+      setInstructorCsvText(demoInstructorCsv)
+      setClassProfileCsvText(demoClassProfileCsv)
+      generateFromCsvs(demoInstructorCsv, demoClassProfileCsv, { start: scheduleStart, end: scheduleEnd })
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only by design
+  }, [])
 
   // Ctrl/Cmd+Z to undo, Ctrl/Cmd+Shift+Z (or Ctrl+Y) to redo — skipped while
   // focused in a text input so the browser's native field-level undo (e.g.
