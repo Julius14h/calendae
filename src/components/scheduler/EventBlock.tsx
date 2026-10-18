@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from 'react';
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from 'react';
 import { Pin } from 'lucide-react';
+import { DayJumpContext } from './DayJumpContext';
 import { usePointerDrag } from './hooks/usePointerDrag';
 import { usePointerResize } from './hooks/usePointerResize';
 import { dateToX, durationToWidthPx, xToDate, type TimelineGeometry } from './utils/timeGeometry';
@@ -120,6 +121,14 @@ function EventBlockImpl({
   // it deliberately does NOT drive the on-screen position of an active drag.
   const [dragVisualPos, setDragVisualPos] = useState<{ left: number; top: number } | null>(null);
 
+  // Week view's jump-to-day strip, if this block is inside it (see
+  // DayJumpBar.tsx) — read through a ref so the memoized drag callbacks
+  // don't need it as a dependency.
+  const dayJump = useContext(DayJumpContext);
+  const dayJumpRef = useRef(dayJump);
+  useEffect(() => {
+    dayJumpRef.current = dayJump;
+  }, [dayJump]);
   const originRef = useRef({ contentX: 0, contentY: 0, startLeft: 0, startTop: 0 });
   const movedRef = useRef(false);
   const suppressClickRef = useRef(false);
@@ -206,7 +215,10 @@ function EventBlockImpl({
       Math.abs(contentX - origin.contentX) > CLICK_MOVE_THRESHOLD_PX ||
       Math.abs(contentY - origin.contentY) > CLICK_MOVE_THRESHOLD_PX
     ) {
-      if (!movedRef.current) onInteractionStart?.(event); // first frame this is an actual drag, not just a click
+      if (!movedRef.current) {
+        onInteractionStart?.(event); // first frame this is an actual drag, not just a click
+        dayJumpRef.current?.setDragging(true);
+      }
       movedRef.current = true;
     }
     const rawDeltaX = contentX - origin.contentX;
@@ -275,8 +287,19 @@ function EventBlockImpl({
     setPreviewAndRef({ start: newStart, end: newEnd, resourceId: resources[targetRowIndex].id });
   }, [setPreviewAndRef]);
 
+  // Released over Week view's DayJumpBar (see usePointerDrag's
+  // isBlockedAt) — snaps back without moving, like a missed drop.
+  const handleMoveCancel = useCallback(() => {
+    if (movedRef.current) suppressClickRef.current = true;
+    dayJumpRef.current?.setDragging(false);
+    setDragging(false);
+    setDragVisualPos(null);
+    setPreviewAndRef(null);
+  }, [setPreviewAndRef]);
+
   const handleMoveEnd = useCallback(() => {
     const { event, onEventMove } = propsRef.current;
+    dayJumpRef.current?.setDragging(false);
     setDragging(false);
     setDragVisualPos(null);
     const finalPreview = previewRef.current;
@@ -318,6 +341,8 @@ function EventBlockImpl({
     autoScrollStartInset,
     onStart: handleMoveStart,
     onMove: handleMoveMove,
+    isBlockedAt: (clientX, clientY) => dayJumpRef.current?.isOverBar(clientX, clientY) ?? false,
+    onCancel: handleMoveCancel,
     onEnd: handleMoveEnd,
   });
 

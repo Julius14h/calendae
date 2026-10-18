@@ -21,6 +21,7 @@ export function TimeHeader({ geometry, onDateClick }: TimeHeaderProps) {
             type="button"
             className={styles.dayCell}
             style={{ width: geometry.dayWidthPx }}
+            data-day-jump-date={day.getTime()}
             onClick={() => onDateClick?.(day)}
           >
             {weekdayLabel(day)}, {monthLabel(day)} {day.getDate()}

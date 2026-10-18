@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { GripVertical, X } from 'lucide-react';
 import { usePendingChipDrag } from './hooks/usePendingChipDrag';
 import styles from './PendingBookingChip.module.css';
@@ -8,6 +9,10 @@ export interface PendingBookingChipProps {
   /** Fired on release — Scheduler.tsx hit-tests (clientX, clientY) against whichever room/time cell (if any) is under the pointer (see its own handlePendingChipDrop) and only then decides whether this "sticks" (a real grid position) or the chip just snaps back for another attempt. */
   onDrop: (clientX: number, clientY: number) => void;
   onCancel: () => void;
+  /** Pointer position on every move once a press has become a real drag (past the 6px click threshold) — drives Week view's DayJumpBar. */
+  onDragMove?: (clientX: number, clientY: number) => void;
+  /** Fired when a drag ends (dropped anywhere, or released in place). */
+  onDragEnd?: () => void;
 }
 
 /**
@@ -31,8 +36,29 @@ export interface PendingBookingChipProps {
  * the drop point directly (via document.elementFromPoint against each
  * view's own data-pending-drop-resource-id cells) instead.
  */
-export function PendingBookingChip({ title, durationMinutes, onDrop, onCancel }: PendingBookingChipProps) {
-  const { dragOffset, handlePointerDown, handlePointerMove, handlePointerUp } = usePendingChipDrag(onDrop);
+export function PendingBookingChip({ title, durationMinutes, onDrop, onCancel, onDragMove, onDragEnd }: PendingBookingChipProps) {
+  const pressRef = useRef({ x: 0, y: 0 });
+  const { dragOffset, handlePointerDown, handlePointerMove, handlePointerUp } = usePendingChipDrag(onDrop, {
+    onMove: (clientX, clientY) => {
+      if (Math.hypot(clientX - pressRef.current.x, clientY - pressRef.current.y) >= 6) onDragMove?.(clientX, clientY);
+    },
+  });
+  const dragging = dragOffset !== null;
+  // Only on the drag's own start/stop transitions — see UnplacedClassesDrawer's
+  // equivalent effect for the same pattern.
+  useEffect(() => {
+    if (!dragging) onDragEnd?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging]);
+  // A successful drop unmounts this chip right away (the booking is now on
+  // the grid — see Scheduler.tsx's `placed`), before the effect above ever
+  // sees `dragging` go false — so report the end on unmount too, or the
+  // DayJumpBar would stay up.
+  const onDragEndRef = useRef(onDragEnd);
+  useEffect(() => {
+    onDragEndRef.current = onDragEnd;
+  });
+  useEffect(() => () => onDragEndRef.current?.(), []);
 
   return (
     <div
@@ -71,7 +97,15 @@ export function PendingBookingChip({ title, durationMinutes, onDrop, onCancel }:
       role="button"
       aria-label={`Drag ${title} into a room and time slot`}
     >
-      <div className={styles.grabHandle} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
+      <div
+        className={styles.grabHandle}
+        onPointerDown={(e) => {
+          pressRef.current = { x: e.clientX, y: e.clientY };
+          handlePointerDown(e);
+        }}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
         <GripVertical size={14} strokeWidth={2.25} />
         <div className={styles.text}>
           <span className={styles.title}>{title}</span>

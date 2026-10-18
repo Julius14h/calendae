@@ -1,0 +1,71 @@
+/* Bottom-center, above the grid (and its auto-scroll edge zone — see
+   usePointerDrag's isBlockedAt, which pauses auto-scroll over this). */
+.bar {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 260;
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  background: var(--sched-surface);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+  animation: barIn 140ms ease-out;
+}
+
+@keyframes barIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
+}
+
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--sched-text);
+  user-select: none;
+  cursor: grabbing;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+/* The same pastel blue as a blue class block's fill (EventBlock's .event
+   tonal-fill formula with the first class-type palette blue, #4f6df5 — see
+   classTypeColors.ts), rather than the solid theme accent. Mixed into the
+   surface, so it stays pastel in dark mode too. */
+.dayActive {
+  background: color-mix(in srgb, #4f6df5 22%, var(--sched-surface));
+  color: var(--sched-text);
+}
+
+.weekday {
+  font-size: 11px;
+  color: inherit;
+  opacity: 0.75;
+}
+
+.date {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.today:not(.dayActive) {
+  color: var(--sched-accent);
+}

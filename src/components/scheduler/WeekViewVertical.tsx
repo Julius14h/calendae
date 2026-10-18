@@ -497,11 +497,11 @@ export function WeekViewVertical({
 
   return (
     <div className={styles.weekViewVertical}>
-      <div className={styles.scrollContainer} ref={scrollContainerRef}>
+      <div className={styles.scrollContainer} ref={scrollContainerRef} data-day-jump-scroller>
         <div className={styles.grid} style={{ width: HOUR_GUTTER_WIDTH_PX + totalCanvasWidthPx }}>
           {/* data-autoscroll-sticky-top: see useAutoScroll's top-edge comment. */}
           <div className={styles.headerRow} data-autoscroll-sticky-top>
-            <div className={styles.cornerCell} style={{ width: HOUR_GUTTER_WIDTH_PX }}>
+            <div className={styles.cornerCell} style={{ width: HOUR_GUTTER_WIDTH_PX }} data-day-jump-sticky-left>
               {/* An empty spacer sharing .dayLabel's own class (not a
                   hardcoded pixel height) so it always matches that row's
                   real rendered height exactly, whatever the font metrics —
@@ -532,7 +532,7 @@ export function WeekViewVertical({
               </div>
             </div>
             {days.map((day, dayIndex) => (
-              <div key={day.getTime()} className={styles.dayGroup} style={{ width: dayGroupWidths[dayIndex] }}>
+              <div key={day.getTime()} className={styles.dayGroup} style={{ width: dayGroupWidths[dayIndex] }} data-day-jump-date={day.getTime()}>
                 <div className={styles.dayLabel}>
                   {weekdayLabel(day)}, {monthLabel(day)} {day.getDate()}
                 </div>

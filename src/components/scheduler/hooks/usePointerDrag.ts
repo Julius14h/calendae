@@ -18,6 +18,10 @@ export interface UsePointerDragOptions {
   /** Shifts the auto-scroll start-edge threshold inward — see useAutoScroll's own doc comment. Only meaningful for TimelineView's sticky resource column. */
   autoScrollStartInset?: number;
   onStart?: (point: DragPoint) => void;
+  /** A screen region the drag shouldn't act on (e.g. Week view's DayJumpBar): while the pointer is over it, auto-scroll pauses and onMove isn't called; releasing over it calls onCancel instead of onEnd. */
+  isBlockedAt?: (clientX: number, clientY: number) => boolean;
+  /** See isBlockedAt. Falls back to onEnd when omitted. */
+  onCancel?: () => void;
   onMove: (point: DragPoint) => void;
   onEnd: (point: DragPoint) => void;
 }
@@ -37,11 +41,23 @@ export function usePointerDrag({
   onStart,
   onMove,
   onEnd,
+  isBlockedAt,
+  onCancel,
 }: UsePointerDragOptions) {
   const autoScroll = useAutoScroll(containerRef, autoScrollThreshold, autoScrollSpeed, autoScrollAxis, autoScrollStartInset);
   const draggingRef = useRef(false);
   const lastClientRef = useRef({ x: 0, y: 0 });
   const previousUserSelectRef = useRef('');
+  const blockedRef = useRef(false);
+  const autoScrollTickRef = useRef<() => void>(() => {});
+  // Read through refs so callers can pass fresh closures without re-binding
+  // the window listeners mid-drag.
+  const isBlockedAtRef = useRef(isBlockedAt);
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => {
+    isBlockedAtRef.current = isBlockedAt;
+    onCancelRef.current = onCancel;
+  });
 
   const computePoint = useCallback((clientX: number, clientY: number): DragPoint => {
     const container = containerRef.current;
@@ -58,6 +74,17 @@ export function usePointerDrag({
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!draggingRef.current) return;
     lastClientRef.current = { x: e.clientX, y: e.clientY };
+    if (isBlockedAtRef.current?.(e.clientX, e.clientY)) {
+      if (!blockedRef.current) {
+        blockedRef.current = true;
+        autoScroll.stop();
+      }
+      return;
+    }
+    if (blockedRef.current) {
+      blockedRef.current = false;
+      autoScroll.start(autoScrollTickRef.current);
+    }
     autoScroll.update(e.clientX, e.clientY);
     onMove(computePoint(e.clientX, e.clientY));
   }, [autoScroll, computePoint, onMove]);
@@ -71,6 +98,12 @@ export function usePointerDrag({
     document.body.style.userSelect = previousUserSelectRef.current;
     window.removeEventListener('pointermove', handlePointerMove);
     window.removeEventListener('pointerup', handlePointerUpRef.current);
+    const blocked = blockedRef.current || (isBlockedAtRef.current?.(e.clientX, e.clientY) ?? false);
+    blockedRef.current = false;
+    if (blocked && onCancelRef.current) {
+      onCancelRef.current();
+      return;
+    }
     onEnd(computePoint(e.clientX, e.clientY));
   }, [autoScroll, computePoint, onEnd, handlePointerMove]);
 
@@ -88,9 +121,11 @@ export function usePointerDrag({
     previousUserSelectRef.current = document.body.style.userSelect;
     document.body.style.userSelect = 'none';
     onStart?.(computePoint(e.clientX, e.clientY));
-    autoScroll.start(() => {
+    blockedRef.current = false;
+    autoScrollTickRef.current = () => {
       onMove(computePoint(lastClientRef.current.x, lastClientRef.current.y));
-    });
+    };
+    autoScroll.start(autoScrollTickRef.current);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
   }, [onStart, autoScroll, computePoint, onMove, handlePointerMove, handlePointerUp]);

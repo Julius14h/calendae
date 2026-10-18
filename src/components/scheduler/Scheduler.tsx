@@ -8,6 +8,8 @@ import { InstructorViewDialog } from './InstructorViewDialog';
 import type { InstructorDialogState } from './InstructorViewDialog';
 import { MonthMoveConflictModal } from './MonthMoveConflictModal';
 import { MonthDayPreviewModal } from './MonthDayPreviewModal';
+import { DayJumpBar, type DayJumpBarHandle } from './DayJumpBar';
+import { DayJumpContext, type DayJumpApi } from './DayJumpContext';
 import { TimelineView, ROW_HEIGHT, RESOURCE_COLUMN_WIDTH, MIN_SLOT_WIDTH_PX } from './TimelineView';
 import { MonthView } from './MonthView';
 import { WeekViewVertical, PX_PER_MINUTE as WEEK_VERTICAL_PX_PER_MINUTE } from './WeekViewVertical';
@@ -329,6 +331,10 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
   // it's needed. Lives entirely in this component (never touches the host
   // app's own controlled `events`) until it's confirmed.
   const [pendingBooking, setPendingBooking] = useState<PendingBooking | null>(null);
+  // Filled in once dayJumpApi exists (declared further down, with the rest
+  // of the DayJumpBar wiring) — lets handlePendingChipDrop, declared
+  // before it, still check isOverBar.
+  const dayJumpApiRef = useRef<DayJumpApi>({ setDragging: () => {}, isOverBar: () => false });
   // The one merged view of "what actually renders on the calendar" — every
   // real, host-owned event, plus the in-progress pending placement (if any)
   // tacked on at the end. Passed to the three primary calendar surfaces
@@ -462,6 +468,9 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
   const handleUnplacedDragStateChange = useCallback(
     (item: UnplacedClass | null) => {
       setDraggingUnplacedItem(item);
+      // Shown on the first real movement (see handleUnplacedDragMove), but
+      // hidden the moment the drag ends either way.
+      if (!item) setDayJumpDragging(false);
       if (item) {
         closeEventPopover();
         setDetailsEventId(UNPLACED_DRAG_EVENT_ID);
@@ -837,6 +846,9 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
   const handlePendingChipDrop = useCallback(
     (clientX: number, clientY: number) => {
       if (!pendingBooking) return;
+      // Released over Week view's DayJumpBar — leave the chip unplaced for
+      // another attempt (checked first: the bar overlays grid cells).
+      if (dayJumpApiRef.current.isOverBar(clientX, clientY)) return;
       const cell = findDropCellAt(clientX, clientY);
       if (!cell) return;
       const resourceId = cell.dataset.pendingDropResourceId as string;
@@ -873,6 +885,22 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
   // a new one). This is its own, separate, array-based flow; only the
   // underlying hit-test convention (data-pending-drop-resource-id cells,
   // already grid-generic) is shared.
+  // Week view's jump-to-day strip (see DayJumpBar.tsx) — shown while a class
+  // is being dragged. The API object is stable (refs only), so providing it
+  // never re-renders the memoized EventBlocks.
+  const [dayJumpDragging, setDayJumpDragging] = useState(false);
+  const dayJumpBarRef = useRef<DayJumpBarHandle>(null);
+  const mainViewRef = useRef<HTMLDivElement>(null);
+  const dayJumpApi = useMemo<DayJumpApi>(
+    () => ({
+      setDragging: setDayJumpDragging,
+      isOverBar: (clientX, clientY) => {
+        const rect = dayJumpBarRef.current?.getRect();
+        return !!rect && clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+      },
+    }),
+    [],
+  );
   const [unplacedDrawerOpen, setUnplacedDrawerOpen] = useState(false);
   // Month view has no room/time cells to drop onto, so a bin class dropped on
   // a Month day opens MonthMoveConflictModal (in 'place' mode) for that day
@@ -903,10 +931,33 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
     [dayStartHour],
   );
 
+  // A bin chip (or the review modal's "Book" chip) being dragged in Week
+  // view: show the DayJumpBar and let it
+  // track the pointer (pointer capture keeps its own hover events from
+  // firing — see DayJumpBarHandle.hoverAt).
+  useEffect(() => {
+    dayJumpApiRef.current = dayJumpApi;
+  }, [dayJumpApi]);
+  const hideDayJumpBar = useCallback(() => setDayJumpDragging(false), []);
+
+  const handleUnplacedDragMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (view !== 'week') return;
+      setDayJumpDragging(true);
+      dayJumpBarRef.current?.hoverAt(clientX, clientY);
+    },
+    [view],
+  );
+
   const handleUnplacedChipDrop = useCallback(
     (id: string, clientX: number, clientY: number) => {
       const item = unplacedClasses?.find((u) => u.id === id);
       if (!item) return;
+      // Released over Week view's DayJumpBar — cancel (the chip snaps back
+      // into the bin), same as an event-block drag released there. Checked
+      // first: the bar overlays the grid, so the cell lookup below would
+      // otherwise find whatever cell sits underneath it.
+      if (dayJumpApi.isOverBar(clientX, clientY)) return;
       const cell = findDropCellAt(clientX, clientY);
       if (!cell) {
         // Month view: elementsFromPoint (plural), since an event bar or the
@@ -937,7 +988,7 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
       const end = new Date(start.getTime() + durationMs);
       onPlaceUnplacedClass?.(id, resourceId, start, end);
     },
-    [unplacedClasses, days, anchorDate, geometry, verticalTimeGeometry, onPlaceUnplacedClass, resources.length, monthPlacementFor],
+    [unplacedClasses, days, anchorDate, geometry, verticalTimeGeometry, onPlaceUnplacedClass, resources.length, monthPlacementFor, dayJumpApi],
   );
 
   // Recomputes (or clears) the pending event's Book/Cancel popup position
@@ -1438,6 +1489,8 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
           />
         )}
 
+        <DayJumpContext.Provider value={view === 'week' ? dayJumpApi : null}>
+        <div ref={mainViewRef} className={styles.mainView}>
         {view === 'month' ? (
           <MonthView
             // Keyed by `view` so every Day/Week/Month switch remounts this
@@ -1557,7 +1610,11 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
             scrollContainerRef={scrollContainerRef}
           />
         )}
+        </div>
+        </DayJumpContext.Provider>
       </div>
+
+      {view === 'week' && dayJumpDragging && <DayJumpBar ref={dayJumpBarRef} days={days} rootRef={mainViewRef} />}
 
       <UnplacedClassesDrawer
         open={unplacedDrawerOpen}
@@ -1568,6 +1625,7 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
         onDismiss={(id) => onDismissUnplacedClass?.(id)}
         onOpenDetails={handleOpenUnplacedDetails}
         onDragStateChange={handleUnplacedDragStateChange}
+        onDragMove={handleUnplacedDragMove}
       />
 
       <UnplacedClassPopover
@@ -1761,6 +1819,8 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
           durationMinutes={(pendingBooking.end.getTime() - pendingBooking.start.getTime()) / 60000}
           onDrop={handlePendingChipDrop}
           onCancel={cancelPendingBooking}
+          onDragMove={handleUnplacedDragMove}
+          onDragEnd={hideDayJumpBar}
         />
       )}
     </div>

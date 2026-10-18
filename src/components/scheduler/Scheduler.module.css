@@ -49,6 +49,17 @@
   min-height: 0;
 }
 
+/* Wraps whichever view is showing (lets DayJumpBar find Week view's own
+   scroll container) — passes the column's flex sizing straight through, so
+   each view still fills the space exactly as when it was a direct child. */
+.mainView {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* View Transitions crossfade for the "scheduler-view" group (TimelineView's
    .scrollContainer / MonthView's .monthView — see either for the JS half in
    Scheduler.tsx's handleViewChange). The browser's own default duration

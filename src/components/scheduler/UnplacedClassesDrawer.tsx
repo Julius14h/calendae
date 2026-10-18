@@ -18,6 +18,8 @@ export interface UnplacedClassesDrawerProps {
   onOpenDetails: (item: UnplacedClass, anchorRect: DOMRect) => void;
   /** Fired whenever any row starts or stops dragging (item, or null once it stops) — lets Scheduler.tsx show the same instructor-availability overlay while dragging an unplaced class as it already does while dragging the review-modal's own pending chip. */
   onDragStateChange: (item: UnplacedClass | null) => void;
+  /** Pointer position on every move once a press has become a real drag (past the click threshold) — drives Week view's DayJumpBar. */
+  onDragMove?: (clientX: number, clientY: number) => void;
 }
 
 /**
@@ -41,6 +43,7 @@ export function UnplacedClassesDrawer({
   onDismiss,
   onOpenDetails,
   onDragStateChange,
+  onDragMove,
 }: UnplacedClassesDrawerProps) {
   return (
     <div className={[styles.drawer, open ? styles.drawerOpen : ''].join(' ').trim()} aria-hidden={!open}>
@@ -64,6 +67,7 @@ export function UnplacedClassesDrawer({
                 onDismiss={onDismiss}
                 onOpenDetails={onOpenDetails}
                 onDragStateChange={onDragStateChange}
+                onDragMove={onDragMove}
               />
             ))}
           </div>
@@ -108,6 +112,7 @@ function UnplacedClassRow({
   onDismiss,
   onOpenDetails,
   onDragStateChange,
+  onDragMove,
 }: {
   item: UnplacedClass;
   color: string;
@@ -115,6 +120,7 @@ function UnplacedClassRow({
   onDismiss: (id: string) => void;
   onOpenDetails: (item: UnplacedClass, anchorRect: DOMRect) => void;
   onDragStateChange: (item: UnplacedClass | null) => void;
+  onDragMove?: (clientX: number, clientY: number) => void;
 }) {
   const rowRef = useRef<HTMLDivElement>(null);
   // Captured at grab time — the floating clone below renders at this fixed
@@ -123,9 +129,17 @@ function UnplacedClassRow({
   // "rest" position is wherever it happens to sit in the list. State (not a
   // ref) since it drives what gets rendered.
   const [originRect, setOriginRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const pressRef = useRef({ x: 0, y: 0 });
   const { dragOffset, handlePointerDown, handlePointerMove, handlePointerUp } = usePendingChipDrag(
     (clientX, clientY) => onDrop(item.id, clientX, clientY),
-    { onClick: (e) => onOpenDetails(item, e.currentTarget.getBoundingClientRect()) },
+    {
+      onClick: (e) => onOpenDetails(item, e.currentTarget.getBoundingClientRect()),
+      // Same 6px as usePendingChipDrag's own click threshold, so a plain
+      // click never flashes the DayJumpBar.
+      onMove: (clientX, clientY) => {
+        if (Math.hypot(clientX - pressRef.current.x, clientY - pressRef.current.y) >= 6) onDragMove?.(clientX, clientY);
+      },
+    },
   );
 
   // The WHOLE chip is the grab surface (not a separate small handle) —
@@ -136,6 +150,7 @@ function UnplacedClassRow({
   function handleRowPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     const rect = rowRef.current?.getBoundingClientRect();
     if (rect) setOriginRect({ top: rect.top, left: rect.left, width: rect.width });
+    pressRef.current = { x: e.clientX, y: e.clientY };
     handlePointerDown(e);
   }
 

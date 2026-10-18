@@ -11,6 +11,8 @@ export interface PendingChipDragHandlers {
 export interface UsePendingChipDragOptions {
   /** Fired instead of `onDrop` when release happens within `clickThresholdPx` of the pointer-down origin — lets a chip that also supports click-to-view-details (see UnplacedClassesDrawer.tsx) distinguish "picked it up and put it right back down" from an intentional drag, same reasoning as EventBlock.tsx's own CLICK_MOVE_THRESHOLD_PX. Omit to treat every release as a drop, matching this hook's original behavior (see PendingBookingChip.tsx, which has no click affordance of its own). */
   onClick?: (e: ReactPointerEvent<HTMLElement>) => void;
+  /** Fired on every pointer move while dragging, with the raw screen position — lets Scheduler.tsx drive Week view's DayJumpBar hover (pointer capture keeps the bar's own hover events from firing). */
+  onMove?: (clientX: number, clientY: number) => void;
   /** Default 6px — deliberately smaller than EventBlock's own 8px: these rows are much smaller click targets, so a slightly tighter tolerance still comfortably absorbs ordinary click jitter without eating into genuine short drags. */
   clickThresholdPx?: number;
 }
@@ -48,6 +50,7 @@ export function usePendingChipDrag(
   function handlePointerMove(e: ReactPointerEvent<HTMLElement>) {
     if (!dragOffset) return;
     setDragOffset({ x: e.clientX - originRef.current.x, y: e.clientY - originRef.current.y });
+    options?.onMove?.(e.clientX, e.clientY);
   }
 
   function handlePointerUp(e: ReactPointerEvent<HTMLElement>) {

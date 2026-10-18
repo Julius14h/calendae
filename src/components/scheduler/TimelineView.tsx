@@ -241,13 +241,14 @@ export function TimelineView({
     <div
       className={styles.scrollContainer}
       ref={scrollContainerRef}
+      data-day-jump-scroller
       tabIndex={0}
       onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
     >
       <div className={styles.grid} style={{ width: RESOURCE_COLUMN_WIDTH + geometry.totalWidthPx }}>
         {/* data-autoscroll-sticky-top: see useAutoScroll's top-edge comment. */}
         <div className={styles.headerRow} data-autoscroll-sticky-top>
-          <div className={styles.cornerCell} style={{ width: RESOURCE_COLUMN_WIDTH }}>
+          <div className={styles.cornerCell} style={{ width: RESOURCE_COLUMN_WIDTH }} data-day-jump-sticky-left>
             <span>Rooms</span>
             {expandableResourceIds.length > 0 && (
               <button
