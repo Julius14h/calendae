@@ -1,6 +1,16 @@
 import { parseDedupedClassProfileRows } from './parseClassProfileCsv'
 import { parseDedupedInstructorRows } from './parseInstructorSurveyCsv'
-import type { Class, DedupedClassProfileRow, DedupedInstructorRow, Instructor } from './types'
+import type { Class, DedupedClassProfileRow, DedupedInstructorRow, Instructor, UnprofiledClass } from './types'
+
+/** Placeholder duration for a claimed class with no usable Class Profile (see Instructor.unprofiledClasses) — never auto-booked, only ever used for the Classes Bin entry a person places by hand. */
+export const UNPROFILED_CLASS_DURATION_MINUTES = 60
+
+/** The Classes Bin note (and review-list detail) for an unprofiled class — see Instructor.unprofiledClasses. */
+export function unprofiledClassNote(reason: UnprofiledClass['reason']): string {
+  return reason === 'no-profile'
+    ? `No Class Profile found. Class duration was set to the default ${UNPROFILED_CLASS_DURATION_MINUTES} mins.`
+    : `Class Profile has no duration. Class duration was set to the default ${UNPROFILED_CLASS_DURATION_MINUTES} mins.`
+}
 
 // Same join key shape both parsers already use internally for their own
 // dedup — reused here just to combine the two datasets, not to dedup again.
@@ -10,7 +20,7 @@ function classProfileKey(email: string, className: string): string {
 
 export type RosterWarning =
   | {
-      /** Claimed on the Availability Form, but no Class Profile submission exists for it yet (or one exists but hasn't got a duration) — the class was skipped rather than fabricated. */
+      /** Claimed on the Availability Form, but no Class Profile submission exists for it yet (or one exists but hasn't got a duration) — never auto-booked, since there's no real duration to book, but carried as an Instructor.unprofiledClasses placeholder so it lands in the Classes Bin instead of being lost. */
       type: 'unmatched-availability-class'
       instructorName: string
       className: string
@@ -101,6 +111,10 @@ export function buildRoster(
 
   const warnings: RosterWarning[] = []
   let nextClassId = 1
+  // Separate id space for unprofiled placeholders, so adding them never
+  // shifts a real class's own id (those end up persisted as
+  // classDefinitions/classRequestId). Negative, so the two can never collide.
+  let nextUnprofiledClassId = -1
   // Every (email, className) key already accounted for by the main claimed-
   // checkbox loop below — the auto-assign-by-email pass afterward skips
   // these, so a class already claimed (and matched, or already warned about)
@@ -124,20 +138,44 @@ export function buildRoster(
     }
   }
 
+  /** `profile` is the duration-less Class Profile when there is one (its room needs/capacity/etc. are still real), or undefined when none was submitted at all. */
+  function buildUnprofiledClass(
+    instructorId: number,
+    className: string,
+    classDomain: string,
+    profile: DedupedClassProfileRow | undefined,
+  ): UnprofiledClass {
+    return {
+      id: nextUnprofiledClassId--,
+      classDomain: profile?.domain ?? classDomain,
+      instructorId,
+      className,
+      classDurationMinutes: UNPROFILED_CLASS_DURATION_MINUTES,
+      roomNeeds: profile?.roomNeeds ?? [],
+      maxParticipation: profile?.maxParticipation ?? null,
+      deliveryFormats: profile?.deliveryFormats,
+      intensity: profile?.intensity,
+      reason: profile ? 'no-duration' : 'no-profile',
+    }
+  }
+
   const instructors = instructorRows.map((row, index) => {
     const instructorId = index + 1
     const classes: Class[] = []
+    const unprofiledClasses: UnprofiledClass[] = []
 
-    for (const { className } of row.classes) {
+    for (const { domain, className } of row.classes) {
       const key = classProfileKey(row.email, className)
       consumedKeys.add(key)
       const profile = profileByKey.get(key)
       if (!profile) {
         warnings.push({ type: 'unmatched-availability-class', instructorName: row.name, className, reason: 'no-profile' })
+        unprofiledClasses.push(buildUnprofiledClass(instructorId, className, domain, undefined))
         continue
       }
       if (profile.durationMinutes == null) {
         warnings.push({ type: 'unmatched-availability-class', instructorName: row.name, className, reason: 'no-duration' })
+        unprofiledClasses.push(buildUnprofiledClass(instructorId, className, domain, profile))
         continue
       }
 
@@ -154,6 +192,7 @@ export function buildRoster(
       consumedKeys.add(key)
       if (profile.durationMinutes == null) {
         warnings.push({ type: 'unmatched-availability-class', instructorName: row.name, className: profile.className, reason: 'no-duration' })
+        unprofiledClasses.push(buildUnprofiledClass(instructorId, profile.className, profile.domain, profile))
         continue
       }
       classes.push(buildClassFromProfile(profile, instructorId))
@@ -176,6 +215,7 @@ export function buildRoster(
       blockedOutDates: row.blockedOutDates,
       availability: row.availability,
       anythingElse: row.anythingElse,
+      unprofiledClasses,
     }
   })
 

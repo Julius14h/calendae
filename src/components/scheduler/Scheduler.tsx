@@ -26,6 +26,7 @@ import { useElementWidth } from './hooks/useElementWidth';
 import { createTimelineGeometry, dateToX, xToDate } from './utils/timeGeometry';
 import { eachDayOfRange, formatToolbarTitle, parseTimeString, startOfWeek } from './utils/dateMath';
 import { computeEventColors } from './utils/eventColor';
+import { findDropCellAt } from './utils/dropTarget';
 import { DEFAULT_DAY_END_HOUR, DEFAULT_DAY_START_HOUR, UNASSIGNED_INSTRUCTOR_ID } from './Scheduler.types';
 import type {
   ClassFieldEditScope,
@@ -60,6 +61,9 @@ const UNPLACED_DRAG_EVENT_ID = '__unplaced-drag__';
 // UNPLACED_DRAG_EVENT_ID's own state, see unplacedDetailsPhantom's doc
 // comment for why the two can't share one mechanism.
 const UNPLACED_DETAILS_EVENT_ID = '__unplaced-details__';
+// The stand-in event for a Classes Bin class being placed via Month view's
+// placement modal (see `pendingMonthPlacement`) — never joins `events`.
+const UNPLACED_MONTH_PLACEMENT_EVENT_ID = '__unplaced-month-placement__';
 // Stable shared identity for "no same-class-type events to highlight right
 // now" — see sameClassEventIds below.
 const EMPTY_EVENT_ID_SET: ReadonlySet<string> = new Set();
@@ -833,9 +837,7 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
   const handlePendingChipDrop = useCallback(
     (clientX: number, clientY: number) => {
       if (!pendingBooking) return;
-      const cell = (document.elementFromPoint(clientX, clientY) as HTMLElement | null)?.closest<HTMLElement>(
-        '[data-pending-drop-resource-id]',
-      );
+      const cell = findDropCellAt(clientX, clientY);
       if (!cell) return;
       const resourceId = cell.dataset.pendingDropResourceId as string;
       const rect = cell.getBoundingClientRect();
@@ -872,14 +874,51 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
   // underlying hit-test convention (data-pending-drop-resource-id cells,
   // already grid-generic) is shared.
   const [unplacedDrawerOpen, setUnplacedDrawerOpen] = useState(false);
+  // Month view has no room/time cells to drop onto, so a bin class dropped on
+  // a Month day opens MonthMoveConflictModal (in 'place' mode) for that day
+  // instead, where the user drags it into a room/time and confirms. `itemId`
+  // is what actually gets placed on Confirm.
+  const [pendingMonthPlacement, setPendingMonthPlacement] = useState<(PendingMonthMove & { itemId: string }) | null>(null);
+
+  /** The stand-in for a bin class dropped on a Month `day` — only its day and duration matter: the modal has no default room/time, the class floats as a chip until the user drags it into the grid (see MonthMoveConflictModal). */
+  const monthPlacementFor = useCallback(
+    (item: UnplacedClass, day: Date): PendingMonthMove & { itemId: string } => {
+      const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), dayStartHour, 0, 0, 0);
+      const end = new Date(start.getTime() + item.durationMinutes * 60000);
+      const event: SchedulerEvent = {
+        id: UNPLACED_MONTH_PLACEMENT_EVENT_ID,
+        resourceId: '',
+        title: item.title,
+        type: item.type,
+        start,
+        end,
+        instructorId: item.instructorId,
+        instructorName: item.instructorName,
+        roomNeeds: item.roomNeeds,
+        deliveryFormats: item.deliveryFormats,
+        intensity: item.intensity,
+      };
+      return { event, newStart: start, newEnd: end, itemId: item.id };
+    },
+    [dayStartHour],
+  );
+
   const handleUnplacedChipDrop = useCallback(
     (id: string, clientX: number, clientY: number) => {
       const item = unplacedClasses?.find((u) => u.id === id);
       if (!item) return;
-      const cell = (document.elementFromPoint(clientX, clientY) as HTMLElement | null)?.closest<HTMLElement>(
-        '[data-pending-drop-resource-id]',
-      );
-      if (!cell) return;
+      const cell = findDropCellAt(clientX, clientY);
+      if (!cell) {
+        // Month view: elementsFromPoint (plural), since an event bar or the
+        // "+N more" button can sit on top of the day cell itself.
+        const monthDayCell = document
+          .elementsFromPoint(clientX, clientY)
+          .find((el): el is HTMLElement => el instanceof HTMLElement && el.dataset.monthDropDay !== undefined);
+        if (monthDayCell && resources.length > 0) {
+          setPendingMonthPlacement(monthPlacementFor(item, new Date(Number(monthDayCell.dataset.monthDropDay))));
+        }
+        return;
+      }
       const resourceId = cell.dataset.pendingDropResourceId as string;
       const rect = cell.getBoundingClientRect();
       const durationMs = item.durationMinutes * 60000;
@@ -898,7 +937,7 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
       const end = new Date(start.getTime() + durationMs);
       onPlaceUnplacedClass?.(id, resourceId, start, end);
     },
-    [unplacedClasses, days, anchorDate, geometry, verticalTimeGeometry, onPlaceUnplacedClass],
+    [unplacedClasses, days, anchorDate, geometry, verticalTimeGeometry, onPlaceUnplacedClass, resources.length, monthPlacementFor],
   );
 
   // Recomputes (or clears) the pending event's Book/Cancel popup position
@@ -1608,16 +1647,39 @@ export const Scheduler = forwardRef<SchedulerHandle, SchedulerProps>(function Sc
         resources={resources}
         instructors={instructors}
         events={events}
+        eventColors={eventColors}
         dayStartHour={dayStartHour}
         dayEndHour={dayEndHour}
         slotMinutes={slotMinutes}
         snapMinutes={snapMinutes}
         autoScrollThreshold={autoScrollThreshold}
         autoScrollSpeed={autoScrollSpeed}
+        onMoveOtherEvent={onEventMove}
         onCancel={() => setPendingMonthMove(null)}
         onConfirm={(resourceId, start, end) => {
           if (pendingMonthMove) onEventMove?.(pendingMonthMove.event, resourceId, start, end);
           setPendingMonthMove(null);
+        }}
+      />
+
+      <MonthMoveConflictModal
+        mode="place"
+        pendingMove={pendingMonthPlacement}
+        resources={resources}
+        instructors={instructors}
+        events={events}
+        eventColors={eventColors}
+        dayStartHour={dayStartHour}
+        dayEndHour={dayEndHour}
+        slotMinutes={slotMinutes}
+        snapMinutes={snapMinutes}
+        autoScrollThreshold={autoScrollThreshold}
+        autoScrollSpeed={autoScrollSpeed}
+        onMoveOtherEvent={onEventMove}
+        onCancel={() => setPendingMonthPlacement(null)}
+        onConfirm={(resourceId, start, end) => {
+          if (pendingMonthPlacement) onPlaceUnplacedClass?.(pendingMonthPlacement.itemId, resourceId, start, end);
+          setPendingMonthPlacement(null);
         }}
       />
 

@@ -1,13 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Calendar, Check, MoreHorizontal, Pencil, Plus, X } from 'lucide-react';
-import { formatBusinessHourLabel, formatHourLabel } from './utils/dateMath';
+import { formatMinutesOfDay } from './utils/dateMath';
 import { initialsFor } from './utils/initials';
 import { SearchableSelect } from './SearchableSelect';
 import type { InstructorAvailabilityBlock, InstructorOption, SchedulerDayOfWeek, SchedulerEvent } from './Scheduler.types';
 import styles from './InstructorViewDialog.module.css';
 
 const DAYS_OF_WEEK: SchedulerDayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 /**
  * Either "viewing/editing an existing instructor" (by id, not a snapshot
@@ -148,8 +147,8 @@ function InstructorViewContent({
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(instructor.name);
   const [newDay, setNewDay] = useState<SchedulerDayOfWeek>('Monday');
-  const [newStartHour, setNewStartHour] = useState(9);
-  const [newEndHour, setNewEndHour] = useState(17);
+  const [newStartMinutes, setNewStartMinutes] = useState(9 * 60);
+  const [newEndMinutes, setNewEndMinutes] = useState(17 * 60);
   // Which availability row's "..." menu (Edit / Delete) is open, if any, and
   // where to render it. Positioned via `fixed` + the button's own measured
   // coordinates (not CSS-relative to the row) so it isn't clipped by — or
@@ -160,8 +159,8 @@ function InstructorViewContent({
   // Which row is being edited in place, and its in-progress draft values.
   const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
   const [editDraftDay, setEditDraftDay] = useState<SchedulerDayOfWeek>('Monday');
-  const [editDraftStartHour, setEditDraftStartHour] = useState(9);
-  const [editDraftEndHour, setEditDraftEndHour] = useState(17);
+  const [editDraftStartMinutes, setEditDraftStartMinutes] = useState(9 * 60);
+  const [editDraftEndMinutes, setEditDraftEndMinutes] = useState(17 * 60);
 
   // Scheduling Preferences — one shared "which field, if any" tracker (only
   // one of these four can be mid-edit at a time) plus a draft per field,
@@ -214,7 +213,8 @@ function InstructorViewContent({
   }
 
   function handleAddBlock() {
-    const block: InstructorAvailabilityBlock = { day: newDay, startMinutes: newStartHour * 60, endMinutes: newEndHour * 60 };
+    if (newEndMinutes <= newStartMinutes) return;
+    const block: InstructorAvailabilityBlock = { day: newDay, startMinutes: newStartMinutes, endMinutes: newEndMinutes };
     onEdit({ availability: [...instructor.availability, block] });
   }
 
@@ -232,17 +232,20 @@ function InstructorViewContent({
   function handleStartEditBlock(index: number) {
     const block = instructor.availability[index];
     setEditDraftDay(block.day);
-    setEditDraftStartHour(Math.floor(block.startMinutes / 60));
-    setEditDraftEndHour(Math.floor(block.endMinutes / 60));
+    // Exact minutes, not rounded to the hour — rounding here used to
+    // silently overwrite e.g. a form's 9:40 with 9:00 on any Save.
+    setEditDraftStartMinutes(block.startMinutes);
+    setEditDraftEndMinutes(block.endMinutes);
     setEditingBlockIndex(index);
     setOpenMenuIndex(null);
   }
 
   function handleSaveEditBlock(index: number) {
+    if (editDraftEndMinutes <= editDraftStartMinutes) return;
     const updated: InstructorAvailabilityBlock = {
       day: editDraftDay,
-      startMinutes: editDraftStartHour * 60,
-      endMinutes: editDraftEndHour * 60,
+      startMinutes: editDraftStartMinutes,
+      endMinutes: editDraftEndMinutes,
     };
     onEdit({ availability: instructor.availability.map((b, i) => (i === index ? updated : b)) });
     setEditingBlockIndex(null);
@@ -360,16 +363,17 @@ function InstructorViewContent({
                       variant="plain"
                       searchThreshold={DAYS_OF_WEEK.length}
                     />
-                    <HourRangePicker
-                      startHour={editDraftStartHour}
-                      endHour={editDraftEndHour}
-                      onStartChange={setEditDraftStartHour}
-                      onEndChange={setEditDraftEndHour}
+                    <TimeRangePicker
+                      startMinutes={editDraftStartMinutes}
+                      endMinutes={editDraftEndMinutes}
+                      onStartChange={setEditDraftStartMinutes}
+                      onEndChange={setEditDraftEndMinutes}
                     />
                     <button
                       type="button"
                       className={styles.inlineSaveButton}
                       onClick={() => handleSaveEditBlock(i)}
+                      disabled={editDraftEndMinutes <= editDraftStartMinutes}
                       aria-label="Save changes"
                       title="Save changes"
                     >
@@ -390,7 +394,7 @@ function InstructorViewContent({
                     <span className={styles.statusDot} />
                     <span className={styles.dayName}>{block.day}</span>
                     <span className={styles.timeRange}>
-                      {formatHourLabel(Math.floor(block.startMinutes / 60))} – {formatHourLabel(Math.floor(block.endMinutes / 60))}
+                      {formatMinutesOfDay(block.startMinutes)} – {formatMinutesOfDay(block.endMinutes)}
                     </span>
                     <div className={styles.moreMenuWrapper} data-more-menu>
                       <button
@@ -448,13 +452,19 @@ function InstructorViewContent({
               variant="plain"
               searchThreshold={DAYS_OF_WEEK.length}
             />
-            <HourRangePicker
-              startHour={newStartHour}
-              endHour={newEndHour}
-              onStartChange={setNewStartHour}
-              onEndChange={setNewEndHour}
+            <TimeRangePicker
+              startMinutes={newStartMinutes}
+              endMinutes={newEndMinutes}
+              onStartChange={setNewStartMinutes}
+              onEndChange={setNewEndMinutes}
             />
-            <button type="button" className={styles.addButtonGhost} onClick={handleAddBlock} aria-label="Add availability block">
+            <button
+              type="button"
+              className={styles.addButtonGhost}
+              onClick={handleAddBlock}
+              disabled={newEndMinutes <= newStartMinutes}
+              aria-label="Add availability block"
+            >
               <Plus size={20} strokeWidth={2.5} />
             </button>
           </div>
@@ -743,8 +753,8 @@ function AddInstructorForm({
   const [name, setName] = useState('');
   const [availability, setAvailability] = useState<InstructorAvailabilityBlock[]>([]);
   const [newDay, setNewDay] = useState<SchedulerDayOfWeek>('Monday');
-  const [newStartHour, setNewStartHour] = useState(9);
-  const [newEndHour, setNewEndHour] = useState(17);
+  const [newStartMinutes, setNewStartMinutes] = useState(9 * 60);
+  const [newEndMinutes, setNewEndMinutes] = useState(17 * 60);
   const [maxSessionsPerWeek, setMaxSessionsPerWeek] = useState('');
   const [maxSessionsPerDay, setMaxSessionsPerDay] = useState('');
   const [consecutiveComfort, setConsecutiveComfort] = useState('');
@@ -754,7 +764,8 @@ function AddInstructorForm({
   const [anythingElse, setAnythingElse] = useState('');
 
   function handleAddBlock() {
-    setAvailability((current) => [...current, { day: newDay, startMinutes: newStartHour * 60, endMinutes: newEndHour * 60 }]);
+    if (newEndMinutes <= newStartMinutes) return;
+    setAvailability((current) => [...current, { day: newDay, startMinutes: newStartMinutes, endMinutes: newEndMinutes }]);
   }
 
   function handleRemoveBlock(index: number) {
@@ -826,7 +837,7 @@ function AddInstructorForm({
                   <span className={styles.statusDot} />
                   <span className={styles.dayName}>{block.day}</span>
                   <span className={styles.timeRange}>
-                    {formatHourLabel(Math.floor(block.startMinutes / 60))} – {formatHourLabel(Math.floor(block.endMinutes / 60))}
+                    {formatMinutesOfDay(block.startMinutes)} – {formatMinutesOfDay(block.endMinutes)}
                   </span>
                   <button
                     type="button"
@@ -852,13 +863,19 @@ function AddInstructorForm({
               variant="plain"
               searchThreshold={DAYS_OF_WEEK.length}
             />
-            <HourRangePicker
-              startHour={newStartHour}
-              endHour={newEndHour}
-              onStartChange={setNewStartHour}
-              onEndChange={setNewEndHour}
+            <TimeRangePicker
+              startMinutes={newStartMinutes}
+              endMinutes={newEndMinutes}
+              onStartChange={setNewStartMinutes}
+              onEndChange={setNewEndMinutes}
             />
-            <button type="button" className={styles.addButtonGhost} onClick={handleAddBlock} aria-label="Add availability block">
+            <button
+              type="button"
+              className={styles.addButtonGhost}
+              onClick={handleAddBlock}
+              disabled={newEndMinutes <= newStartMinutes}
+              aria-label="Add availability block"
+            >
               <Plus size={20} strokeWidth={2.5} />
             </button>
           </div>
@@ -978,41 +995,62 @@ function AddInstructorForm({
 }
 
 /**
- * Shared start–end hour range control for both an availability row's inline
+ * Shared start–end time range control for both an availability row's inline
  * edit form and the "add new" row below it — a single pill (filled
  * background, no border) with a plain-text "to" in the middle instead of a
- * dash, matching SchedulerDrawer's business hours control.
+ * dash, matching SchedulerDrawer's business hours control. Native time
+ * inputs (minute precision), not hour dropdowns: form answers can land on
+ * any minute (real exports include e.g. 9:43), and an hour-only control
+ * both misdisplayed those and rounded them away on Save.
  */
-function HourRangePicker({
-  startHour,
-  endHour,
+function TimeRangePicker({
+  startMinutes,
+  endMinutes,
   onStartChange,
   onEndChange,
 }: {
-  startHour: number;
-  endHour: number;
-  onStartChange: (hour: number) => void;
-  onEndChange: (hour: number) => void;
+  startMinutes: number;
+  endMinutes: number;
+  onStartChange: (minutes: number) => void;
+  onEndChange: (minutes: number) => void;
 }) {
+  const invalid = endMinutes <= startMinutes;
   return (
     <div className={styles.hourRangeBox}>
-      <SearchableSelect
-        value={startHour}
-        options={HOURS.filter((h) => h < endHour).map((h) => ({ value: h, label: formatBusinessHourLabel(h) }))}
-        onChange={onStartChange}
-        ariaLabel="Availability start"
-        variant="plain"
-        searchThreshold={HOURS.length}
+      <input
+        type="time"
+        className={styles.timeInput}
+        value={minutesToTimeValue(startMinutes)}
+        onChange={(e) => {
+          const minutes = timeValueToMinutes(e.target.value);
+          if (minutes != null) onStartChange(minutes);
+        }}
+        aria-label="Availability start"
       />
       <span className={styles.hourRangeTo}>to</span>
-      <SearchableSelect
-        value={endHour}
-        options={HOURS.filter((h) => h > startHour).map((h) => ({ value: h, label: formatBusinessHourLabel(h) }))}
-        onChange={onEndChange}
-        ariaLabel="Availability end"
-        variant="plain"
-        searchThreshold={HOURS.length}
+      <input
+        type="time"
+        className={styles.timeInput}
+        value={minutesToTimeValue(endMinutes)}
+        onChange={(e) => {
+          const minutes = timeValueToMinutes(e.target.value);
+          if (minutes != null) onEndChange(minutes);
+        }}
+        aria-label="Availability end"
+        aria-invalid={invalid}
+        title={invalid ? 'End time must be after the start time' : undefined}
       />
     </div>
   );
+}
+
+/** Minutes since midnight -> an <input type="time"> value ("09:40"). */
+function minutesToTimeValue(totalMinutes: number): string {
+  return `${String(Math.floor(totalMinutes / 60) % 24).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+}
+
+/** An <input type="time"> value ("09:40") -> minutes since midnight, or null while the field is cleared/incomplete. */
+function timeValueToMinutes(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})/.exec(value);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }

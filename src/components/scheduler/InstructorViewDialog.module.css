@@ -499,6 +499,28 @@
   min-width: 76px;
 }
 
+/* Native time input, stripped down to plain text inside the pill — the
+   picker popup itself follows the app's theme via color-scheme (theme.css). */
+.timeInput {
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  font: inherit;
+  font-size: 14px;
+  padding: 0;
+  min-width: 0;
+}
+
+.timeInput:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.timeInput[aria-invalid='true'] {
+  color: #ef4444;
+}
+
 .hourRangeTo {
   flex: 0 0 auto;
   min-width: 0;
@@ -583,5 +605,12 @@
 
 .footerCreateButton:disabled {
   opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Add/Save stay disabled while the time range is backwards (see TimeRangePicker). */
+.addButtonGhost:disabled,
+.inlineSaveButton:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }

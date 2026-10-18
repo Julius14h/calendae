@@ -623,3 +623,25 @@ describe('applyRecurrenceEdit', () => {
     }
   })
 })
+
+describe('regenerateWeek with a class in both the roster and the bin', () => {
+  const binItem: UnplacedClass = { id: 'u1', title: 'Swimming', durationMinutes: 60, instructorId: 1, instructorName: 'Jane Doe' }
+
+  it('books it only once when bin items are included', () => {
+    const doc = makeDoc({ unplacedClasses: [binItem] })
+
+    const { doc: result } = regenerateWeek(doc, makeOptions({ includeBinItems: true }))
+
+    expect(result.events.filter((e) => e.title === 'Swimming')).toHaveLength(1)
+    expect(result.unplacedClasses).toEqual([])
+  })
+
+  it('leaves it in the bin, not also auto-booked, when bin items are not included', () => {
+    const doc = makeDoc({ unplacedClasses: [binItem] })
+
+    const { doc: result } = regenerateWeek(doc, makeOptions({ includeBinItems: false }))
+
+    expect(result.events.filter((e) => e.title === 'Swimming')).toHaveLength(0)
+    expect(result.unplacedClasses).toEqual([binItem])
+  })
+})

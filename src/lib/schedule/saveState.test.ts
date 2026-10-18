@@ -90,3 +90,29 @@ describe('schedule save/load round-trip', () => {
     expect(() => parseScheduleState(JSON.stringify({ foo: 'bar' }))).toThrow()
   })
 })
+
+describe('current (version 4) save compatibility', () => {
+  it('round-trips every field of a save made before the bin-recovery changes, unchanged', () => {
+    const unplacedClasses: UnplacedClass[] = [
+      { id: 'u1', title: 'Yoga', type: 'Fitness & Aquatics', durationMinutes: 45, instructorId: 1, instructorName: 'Jane Doe', note: 'Hand note' },
+    ]
+    const classDefinitions: Class[] = [
+      { id: 1, classDomain: 'Aquatics', instructorId: 1, className: 'Swimming', classDurationMinutes: 60, roomNeeds: ['Pool'], maxParticipation: 12 },
+    ]
+    const saved = {
+      version: 4,
+      savedAt: '2026-09-01T12:00:00.000Z',
+      resources,
+      classTypes,
+      instructors,
+      events,
+      unplacedClasses,
+      classDefinitions,
+      resolvedIssueIds: ['instructor-conflict-e1'],
+    }
+
+    const restored = parseScheduleState(JSON.stringify(saved))
+
+    expect(restored).toEqual({ resources, classTypes, instructors, events, unplacedClasses, classDefinitions, resolvedIssueIds: ['instructor-conflict-e1'] })
+  })
+})

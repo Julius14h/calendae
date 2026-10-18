@@ -284,3 +284,50 @@ describe('buildRoster', () => {
     expect(warnings.some((w) => w.type === 'blocked-out-dates')).toBe(false)
   })
 })
+
+describe('buildRoster unprofiled classes', () => {
+  it('keeps a claimed class with no Class Profile as a 60-min placeholder, out of the bookable classes', () => {
+    const { instructors } = buildRoster([makeInstructorRow()], [])
+
+    expect(instructors[0].classes).toEqual([])
+    expect(instructors[0].unprofiledClasses).toEqual([
+      {
+        id: -1,
+        classDomain: 'Fitness & Aquatics',
+        instructorId: 1,
+        className: 'Swimming',
+        classDurationMinutes: 60,
+        roomNeeds: [],
+        maxParticipation: null,
+        reason: 'no-profile',
+      },
+    ])
+  })
+
+  it("keeps a duration-less Class Profile's real details on the placeholder", () => {
+    const { instructors } = buildRoster([makeInstructorRow()], [makeClassProfileRow({ durationMinutes: null })])
+
+    expect(instructors[0].unprofiledClasses).toEqual([
+      expect.objectContaining({ className: 'Swimming', classDurationMinutes: 60, roomNeeds: ['Pool'], maxParticipation: 20, reason: 'no-duration' }),
+    ])
+  })
+
+  it('catches a duration-less profile that was only matched by email, too', () => {
+    const { instructors } = buildRoster(
+      [makeInstructorRow({ classes: [] })],
+      [makeClassProfileRow({ className: 'Yoga', durationMinutes: null })],
+    )
+
+    expect(instructors[0].unprofiledClasses).toEqual([expect.objectContaining({ className: 'Yoga', reason: 'no-duration' })])
+  })
+
+  it("never shifts a real class's own id", () => {
+    const { instructors } = buildRoster(
+      [makeInstructorRow({ classes: [{ domain: 'Fitness & Aquatics', className: 'Unprofiled' }, { domain: 'Fitness & Aquatics', className: 'Swimming' }] })],
+      [makeClassProfileRow()],
+    )
+
+    expect(instructors[0].classes.map((c) => c.id)).toEqual([1])
+    expect(instructors[0].unprofiledClasses?.map((c) => c.id)).toEqual([-1])
+  })
+})

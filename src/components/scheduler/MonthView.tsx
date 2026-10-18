@@ -340,6 +340,10 @@ export function MonthView({
                       inCurrentMonth ? '' : styles.dayCellDim,
                       isDragOver ? styles.dayCellDragOver : '',
                     ].join(' ').trim()}
+                    // Classes Bin drop target — see Scheduler.tsx's own
+                    // handleUnplacedChipDrop (Month has no room/time cells, so
+                    // a drop here opens a placement modal for this day instead).
+                    data-month-drop-day={day.getTime()}
                     onPointerDown={pan.onPointerDown}
                     onMouseEnter={() => setViewDayHoverDate(day)}
                     onMouseLeave={() => setViewDayHoverDate(null)}

@@ -245,7 +245,8 @@ export function TimelineView({
       onMouseEnter={(e) => e.currentTarget.focus({ preventScroll: true })}
     >
       <div className={styles.grid} style={{ width: RESOURCE_COLUMN_WIDTH + geometry.totalWidthPx }}>
-        <div className={styles.headerRow}>
+        {/* data-autoscroll-sticky-top: see useAutoScroll's top-edge comment. */}
+        <div className={styles.headerRow} data-autoscroll-sticky-top>
           <div className={styles.cornerCell} style={{ width: RESOURCE_COLUMN_WIDTH }}>
             <span>Rooms</span>
             {expandableResourceIds.length > 0 && (

@@ -499,7 +499,8 @@ export function WeekViewVertical({
     <div className={styles.weekViewVertical}>
       <div className={styles.scrollContainer} ref={scrollContainerRef}>
         <div className={styles.grid} style={{ width: HOUR_GUTTER_WIDTH_PX + totalCanvasWidthPx }}>
-          <div className={styles.headerRow}>
+          {/* data-autoscroll-sticky-top: see useAutoScroll's top-edge comment. */}
+          <div className={styles.headerRow} data-autoscroll-sticky-top>
             <div className={styles.cornerCell} style={{ width: HOUR_GUTTER_WIDTH_PX }}>
               {/* An empty spacer sharing .dayLabel's own class (not a
                   hardcoded pixel height) so it always matches that row's

@@ -1,25 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { AlertTriangle, GripVertical, X } from 'lucide-react';
 import { TimelineView, MIN_SLOT_WIDTH_PX, RESOURCE_COLUMN_WIDTH } from './TimelineView';
 import { useElementWidth } from './hooks/useElementWidth';
-import { createTimelineGeometry } from './utils/timeGeometry';
+import { usePendingChipDrag } from './hooks/usePendingChipDrag';
+import { createTimelineGeometry, xToDate } from './utils/timeGeometry';
 import { findConflicts } from './utils/conflict';
-import { formatTimeOfDay, isSameDay, monthLabel, startOfDay, weekdayLabel } from './utils/dateMath';
+import { findDropCellAt } from './utils/dropTarget';
+import { isSameDay, startOfDay } from './utils/dateMath';
 import type { InstructorOption, PendingMonthMove, Resource, SchedulerEvent } from './Scheduler.types';
 import styles from './MonthMoveConflictModal.module.css';
 
-// Reuses the app's existing "conflict"/"primary interactive" colors rather
-// than inventing new ones — #ef4444 is already the destructive/conflict
-// color everywhere else (delete buttons, danger menu items); the pending
-// placement uses the theme accent, same as any other selected/primary UI.
-const CONFLICT_COLOR = '#ef4444';
-const PENDING_COLOR = 'var(--sched-accent)';
-// The instructor's *other* booking, when it's the only reason the slot still
-// conflicts and it isn't already obvious (it's in a different room, so it
-// never visually overlaps the pending block) — a distinct color from the
-// uniform "Booked" red so it's identifiable as the specific cause, not just
-// another unrelated booking.
-const INSTRUCTOR_CONFLICT_COLOR = '#f59e0b';
 const EMPTY_CLASS_TYPES = new Set<string>();
 const EMPTY_INSTRUCTOR_IDS = new Set<number>();
 const EMPTY_EVENT_IDS = new Set<string>();
@@ -29,6 +19,8 @@ export interface MonthMoveConflictModalProps {
   resources: Resource[];
   instructors: InstructorOption[];
   events: SchedulerEvent[];
+  /** The calendar's own per-event colors (Scheduler.tsx's computeEventColors) — so every booking looks exactly like it does on the regular calendar. */
+  eventColors: Map<string, string>;
   dayStartHour: number;
   dayEndHour: number;
   slotMinutes: number;
@@ -37,20 +29,32 @@ export interface MonthMoveConflictModalProps {
   autoScrollSpeed: number;
   onCancel: () => void;
   onConfirm: (resourceId: string, start: Date, end: Date) => void;
+  /** Moves one of the day's OTHER, already-booked classes. Staged inside the modal like the main class — only called (once per moved class, before onConfirm) when the user confirms; Cancel discards them. */
+  onMoveOtherEvent?: (event: SchedulerEvent, newResourceId: string, newStart: Date, newEnd: Date) => void;
+  /** 'move' (default): an existing event dragged to a conflicting day. 'place': a Classes Bin class dropped onto a Month day (see Scheduler.tsx's handleUnplacedChipDrop) — same pick-a-room-and-time grid, just worded as placing rather than moving. */
+  mode?: 'move' | 'place';
 }
 
 /**
  * Opened when a Month-view drag-to-a-different-day lands on a conflict (see
- * MonthView's onEventMoveConflict) — a "snapshot of Day view" for the target
- * date: every real booking on it shown read-only in red, the tentative
- * placement shown as its own draggable block the user can reposition, then
- * Confirm (always enabled — deliberate double-booking is allowed) or Cancel.
+ * MonthView's onEventMoveConflict), or a Classes Bin class is dropped on a
+ * Month day (mode 'place') — laid out like the View day modal: the target
+ * day's real bookings in their regular calendar colors (movable, but staged
+ * like the class itself — applied on Confirm, discarded on Cancel; see
+ * onMoveOtherEvent), and the
+ * class itself floating as a chip over the header until the user drags it
+ * into a room/time (no default placement). Once placed it stays in the
+ * pending style and can be dragged again to adjust, then Confirm (enabled
+ * once placed — deliberate double-booking is allowed) or Cancel. The
+ * instructor-availability overlay follows Day view's rule: only for
+ * whichever class is highlighted.
  */
 export function MonthMoveConflictModal({
   pendingMove,
   resources,
   instructors,
   events,
+  eventColors,
   dayStartHour,
   dayEndHour,
   slotMinutes,
@@ -59,6 +63,8 @@ export function MonthMoveConflictModal({
   autoScrollSpeed,
   onCancel,
   onConfirm,
+  onMoveOtherEvent,
+  mode = 'move',
 }: MonthMoveConflictModalProps) {
   useEffect(() => {
     if (!pendingMove) return;
@@ -82,7 +88,7 @@ export function MonthMoveConflictModal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Resolve scheduling conflict"
+        aria-label={mode === 'place' ? 'Place class' : 'Resolve scheduling conflict'}
       >
         {/* Keyed so a fresh drag proposal (even onto the same event again)
             always resets the in-progress candidate via remount. */}
@@ -92,6 +98,7 @@ export function MonthMoveConflictModal({
           resources={resources}
           instructors={instructors}
           events={events}
+          eventColors={eventColors}
           dayStartHour={dayStartHour}
           dayEndHour={dayEndHour}
           slotMinutes={slotMinutes}
@@ -100,6 +107,8 @@ export function MonthMoveConflictModal({
           autoScrollSpeed={autoScrollSpeed}
           onCancel={onCancel}
           onConfirm={onConfirm}
+          onMoveOtherEvent={onMoveOtherEvent}
+          mode={mode}
         />
       </div>
     </div>
@@ -117,6 +126,7 @@ function MonthMoveConflictContent({
   resources,
   instructors,
   events,
+  eventColors,
   dayStartHour,
   dayEndHour,
   slotMinutes,
@@ -125,9 +135,36 @@ function MonthMoveConflictContent({
   autoScrollSpeed,
   onCancel,
   onConfirm,
+  onMoveOtherEvent,
+  mode,
 }: MonthMoveConflictModalProps & { pendingMove: PendingMonthMove }) {
   const { event, newStart, newEnd } = pendingMove;
-  const [candidate, setCandidate] = useState<Candidate>({ resourceId: event.resourceId, start: newStart, end: newEnd });
+  const durationMs = newEnd.getTime() - newStart.getTime();
+  // No default placement: starts null, with the class floating as a chip
+  // over the header (see FloatingPlacementChip) until the user drags it
+  // into a room/time — a guessed spot was easy to confirm by accident.
+  const [candidate, setCandidate] = useState<Candidate | null>(null);
+  // Same rule as the regular Day/Week view: whichever class is highlighted —
+  // being dragged (the chip, or any block), or clicked — gets the selected
+  // style and its instructor's availability overlay; a click on empty grid
+  // space clears it. `event.id` covers the class being placed, whether it's
+  // still a chip or already a block.
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  // Moves of the day's OTHER classes, by event id — held here (not applied)
+  // until Confirm, so Cancel leaves the real schedule exactly as it was.
+  const [stagedMoves, setStagedMoves] = useState<ReadonlyMap<string, Candidate>>(new Map());
+  // `events` as they'd be with every staged move applied — what the grid
+  // shows and the conflict warning checks against.
+  const effectiveEvents = useMemo(
+    () =>
+      stagedMoves.size === 0
+        ? events
+        : events.map((e) => {
+            const move = stagedMoves.get(e.id);
+            return move ? { ...e, resourceId: move.resourceId, start: move.start, end: move.end } : e;
+          }),
+    [events, stagedMoves],
+  );
   const [expandedResourceIds, setExpandedResourceIds] = useState<Set<string>>(new Set());
 
   function toggleExpanded(id: string) {
@@ -147,120 +184,117 @@ function MonthMoveConflictContent({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const gridWrapperWidth = useElementWidth(gridWrapperRef);
 
+  // The target day, midnight-normalized — always the day that was dropped
+  // onto (`newStart`), whether or not anything's been placed yet. Must be
+  // midnight-normalized: xToDate() rebuilds a dropped date via
+  // addMinutes(days[dayIndex], ...), plain millisecond arithmetic (see
+  // dateMath.ts), so a non-midnight day here would add a spurious offset to
+  // every dragged position.
+  const targetDay = useMemo(() => startOfDay(newStart), [newStart]);
+
   const geometry = useMemo(() => {
     const slotsPerDay = ((dayEndHour - dayStartHour) * 60) / slotMinutes;
     const availableWidth = Math.max(0, gridWrapperWidth - RESOURCE_COLUMN_WIDTH);
     const slotWidthPx = Math.max(MIN_SLOT_WIDTH_PX, Math.floor(availableWidth / slotsPerDay));
     return createTimelineGeometry({
-      // Midnight-normalized, not candidate.start itself — xToDate() rebuilds
-      // a dropped date via addMinutes(days[dayIndex], ...), which is plain
-      // millisecond arithmetic (see dateMath.ts), not a calendar-field reset.
-      // Day/Week's own geometry always gets midnight-normalized days (via
-      // startOfDay()/eachDayOfRange()), so that arithmetic silently assumes
-      // it. Passing candidate.start (e.g. 9:00 AM) here instead added a
-      // second, spurious 9:00-AM-plus-dayStartHour offset to every dragged
-      // position — small pixel deltas produced multi-hour jumps, and a drag
-      // near the end of the business-hours window could roll past midnight
-      // onto the next calendar day.
-      days: [startOfDay(candidate.start)],
+      days: [targetDay],
       slotMinutes,
       snapMinutes,
       slotWidthPx,
       dayStartHour,
       dayEndHour,
     });
-  }, [candidate.start, gridWrapperWidth, slotMinutes, snapMinutes, dayStartHour, dayEndHour]);
+  }, [targetDay, gridWrapperWidth, slotMinutes, snapMinutes, dayStartHour, dayEndHour]);
 
   // Every other real booking on the target day — read-only backdrop. Never
   // includes `event` itself: it isn't really on this day until Confirm, and
   // the synthetic pending block below (same id) stands in for it instead —
   // this filter is what keeps that substitution from double-rendering.
   const dayEvents = useMemo(
-    () => events.filter((e) => e.id !== event.id && isSameDay(e.start, candidate.start)),
-    [events, event.id, candidate.start],
+    () => effectiveEvents.filter((e) => e.id !== event.id && isSameDay(e.start, targetDay)),
+    [effectiveEvents, event.id, targetDay],
   );
 
-  const pendingEvent: SchedulerEvent = useMemo(
-    () => ({ ...event, resourceId: candidate.resourceId, start: candidate.start, end: candidate.end }),
+  // `pending: true` keeps it in the pending (blue, dotted) style until
+  // Place/Confirm — see .gridWrapper [data-pending] in the stylesheet.
+  const pendingEvent: SchedulerEvent | null = useMemo(
+    () => (candidate ? { ...event, pending: true, resourceId: candidate.resourceId, start: candidate.start, end: candidate.end } : null),
     [event, candidate],
   );
 
-  const modalEvents = useMemo(() => [...dayEvents, pendingEvent], [dayEvents, pendingEvent]);
+  // While still a chip, the overlay is dated onto the target day so it can
+  // guide where to drop it.
+  const overlayEvent: SchedulerEvent | null = useMemo(() => {
+    if (highlightedId === null) return null;
+    if (highlightedId === event.id) return pendingEvent ?? { ...event, start: newStart, end: newEnd };
+    return dayEvents.find((e) => e.id === highlightedId) ?? null;
+  }, [highlightedId, pendingEvent, event, newStart, newEnd, dayEvents]);
 
-  // Re-checked on every reposition purely to drive the "still conflicts"
-  // legend note — never gates Confirm, which stays enabled regardless.
-  const { roomConflict, instructorConflict } = findConflicts(events, {
-    resourceId: candidate.resourceId,
-    instructorId: event.instructorId,
-    start: candidate.start,
-    end: candidate.end,
-    excludeEventId: event.id,
-  });
-  const stillConflicts = Boolean(roomConflict || instructorConflict);
-  // The instructor conflict is only worth calling out with its own color when
-  // it's the reason the slot conflicts *and* it's in a different room than
-  // the candidate — same-room instructor conflicts are already the room
-  // conflict itself (same event, already shown in the uniform "Booked" red),
-  // and highlighting it twice would be redundant.
-  const instructorConflictElsewhere =
-    instructorConflict && instructorConflict.resourceId !== candidate.resourceId ? instructorConflict : null;
-
-  const eventColors = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const e of dayEvents) {
-      map.set(e.id, e.id === instructorConflictElsewhere?.id ? INSTRUCTOR_CONFLICT_COLOR : CONFLICT_COLOR);
+  // A short warning beside the title once placed — never gates Confirm
+  // (deliberate double-booking is allowed). Checked against the staged
+  // events, so moving another class out of the way clears it right away.
+  const conflictWarning = useMemo(() => {
+    if (!candidate) return null;
+    const { roomConflict, instructorConflict } = findConflicts(effectiveEvents, {
+      resourceId: candidate.resourceId,
+      instructorId: event.instructorId,
+      start: candidate.start,
+      end: candidate.end,
+      excludeEventId: event.id,
+    });
+    if (roomConflict) return `Room already booked for ${roomConflict.title}`;
+    if (instructorConflict) {
+      const room = resources.find((r) => r.id === instructorConflict.resourceId)?.title ?? 'another room';
+      return `${event.instructorName} is also teaching ${instructorConflict.title} in ${room} at this time`;
     }
-    map.set(pendingEvent.id, PENDING_COLOR);
-    return map;
-  }, [dayEvents, pendingEvent, instructorConflictElsewhere]);
+    return null;
+  }, [candidate, effectiveEvents, event.id, event.instructorId, event.instructorName, resources]);
 
-  const nonInteractiveEventIds = useMemo(() => new Set(dayEvents.map((e) => e.id)), [dayEvents]);
+  const modalEvents = useMemo(() => (pendingEvent ? [...dayEvents, pendingEvent] : dayEvents), [dayEvents, pendingEvent]);
+
+  // Same hit-test convention Scheduler.tsx's own chip drops use (ResourceRow
+  // cells carry data-pending-drop-resource-id), scoped to THIS modal's grid
+  // so the page's own Day/Week grid behind the backdrop can never match.
+  function handleChipDrop(clientX: number, clientY: number) {
+    const cell = findDropCellAt(clientX, clientY, gridWrapperRef.current);
+    if (!cell) return; // missed the grid — chip just snaps back
+    const start = xToDate(clientX - cell.getBoundingClientRect().left, geometry);
+    setCandidate({ resourceId: cell.dataset.pendingDropResourceId as string, start, end: new Date(start.getTime() + durationMs) });
+  }
 
   return (
     <>
       <div className={styles.header}>
-        <div className={styles.headerText}>
-          <h2 className={styles.title}>
-            Moving to {weekdayLabel(newStart)}, {monthLabel(newStart)} {newStart.getDate()}
-          </h2>
-          <p className={styles.subtitle}>
-            {event.title} · {formatTimeOfDay(candidate.start)}–{formatTimeOfDay(candidate.end)}
-          </p>
+        <div className={styles.titleRow}>
+          <h2 className={styles.title}>{event.title}</h2>
+          {conflictWarning && (
+            <span className={styles.conflictWarning} role="status">
+              <AlertTriangle size={14} strokeWidth={2.25} aria-hidden="true" />
+              {conflictWarning}
+            </span>
+          )}
         </div>
-        <button type="button" className={styles.closeButton} onClick={onCancel} aria-label="Cancel move">
+        {!candidate && (
+          <FloatingPlacementChip
+            title={event.title}
+            durationMinutes={Math.round(durationMs / 60000)}
+            onDrop={handleChipDrop}
+            onDragStateChange={(dragging) => setHighlightedId(dragging ? event.id : null)}
+          />
+        )}
+        <button type="button" className={styles.closeButton} onClick={onCancel} aria-label={mode === 'place' ? 'Cancel placing' : 'Cancel move'}>
           <X size={20} />
         </button>
       </div>
 
-      <p className={styles.instructions}>Hold and drag the event to a new slot, or confirm the default.</p>
-
-      <div className={styles.legend}>
-        <span className={styles.legendItem}>
-          <span className={[styles.swatch, styles.swatchPending].join(' ')} /> Default placement
-        </span>
-        <span className={styles.legendItem}>
-          <span className={[styles.swatch, styles.swatchConflict].join(' ')} /> Booked
-        </span>
-        {instructorConflictElsewhere && (
-          <span className={styles.legendItem}>
-            <span className={[styles.swatch, styles.swatchInstructorConflict].join(' ')} /> Instructor busy elsewhere
-          </span>
-        )}
-        <span className={styles.legendItem}>
-          <span className={[styles.swatch, styles.swatchOpen].join(' ')} /> Open
-        </span>
-        {stillConflicts && (
-          <span className={styles.legendWarning}>
-            {roomConflict
-              ? `Room already booked for ${roomConflict.title}`
-              : instructorConflictElsewhere
-                ? `${event.instructorName} is also teaching ${instructorConflictElsewhere.title} in ${resources.find((r) => r.id === instructorConflictElsewhere.resourceId)?.title ?? 'another room'} at this time`
-                : 'This slot still conflicts'}
-          </span>
-        )}
-      </div>
-
-      <div className={styles.gridWrapper} ref={gridWrapperRef}>
+      <div
+        className={styles.gridWrapper}
+        ref={gridWrapperRef}
+        // A press on empty grid space un-highlights, same as Day/Week view.
+        onPointerDown={(e) => {
+          if (!(e.target as HTMLElement).closest('[data-scheduler-event]')) setHighlightedId(null);
+        }}
+      >
         {/* Gated on a real (post-layout) width measurement rather than
             mounting immediately at width 0 — TimelineView's geometry is a
             function of the measured width, and mounting it against a
@@ -272,29 +306,31 @@ function MonthMoveConflictContent({
             resources={resources}
             events={modalEvents}
             instructors={instructors}
-            highlightEvent={null}
+            highlightEvent={overlayEvent}
             pendingSelection={null}
             geometry={geometry}
             editable
             eventColors={eventColors}
             // Same edge-detection auto-scroll as Day/Week (threaded through
             // from Scheduler's own configured values), so dragging near the
-            // mini grid's edge scrolls it horizontally too.
+            // mini grid's edge scrolls it too.
             autoScrollThreshold={autoScrollThreshold}
             autoScrollSpeed={autoScrollSpeed}
-            selectedEventId={null}
+            selectedEventId={highlightedId}
             sameClassEventIds={EMPTY_EVENT_IDS}
             hiddenClassTypes={EMPTY_CLASS_TYPES}
             hiddenInstructorIds={EMPTY_INSTRUCTOR_IDS}
             expandedResourceIds={expandedResourceIds}
             onToggleResourceExpanded={toggleExpanded}
-            nonInteractiveEventIds={nonInteractiveEventIds}
             disableRowSelection
+            onEventInteractionStart={(started) => setHighlightedId(started.id)}
+            onEventClick={(clicked) => setHighlightedId((current) => (current === clicked.id ? null : clicked.id))}
             onEventMove={(movedEvent, newResourceId, movedStart, movedEnd) => {
-              // Defensive — nonInteractiveEventIds already prevents this firing
-              // for any of the real (red) bookings.
-              if (movedEvent.id !== pendingEvent.id) return;
-              setCandidate({ resourceId: newResourceId, start: movedStart, end: movedEnd });
+              if (movedEvent.id === event.id) {
+                setCandidate({ resourceId: newResourceId, start: movedStart, end: movedEnd });
+              } else {
+                setStagedMoves((current) => new Map(current).set(movedEvent.id, { resourceId: newResourceId, start: movedStart, end: movedEnd }));
+              }
             }}
             scrollContainerRef={scrollContainerRef}
           />
@@ -308,11 +344,72 @@ function MonthMoveConflictContent({
         <button
           type="button"
           className={styles.confirmButton}
-          onClick={() => onConfirm(candidate.resourceId, candidate.start, candidate.end)}
+          disabled={!candidate}
+          onClick={() => {
+            if (!candidate) return;
+            // Staged moves first, against the ORIGINAL events (what the host
+            // knows about), then the class itself.
+            for (const [id, move] of stagedMoves) {
+              const original = events.find((e) => e.id === id);
+              if (original) onMoveOtherEvent?.(original, move.resourceId, move.start, move.end);
+            }
+            onConfirm(candidate.resourceId, candidate.start, candidate.end);
+          }}
         >
-          Confirm move
+          {mode === 'place' ? 'Place class' : 'Confirm move'}
         </button>
       </div>
     </>
+  );
+}
+
+/**
+ * The not-yet-placed class, floating over the modal's header — dragged into
+ * the grid below to give it a room and time (see handleChipDrop). Same
+ * raw-cursor-following mechanics as PendingBookingChip (usePendingChipDrag),
+ * styled in the theme accent with a dotted outline.
+ */
+function FloatingPlacementChip({
+  title,
+  durationMinutes,
+  onDrop,
+  onDragStateChange,
+}: {
+  title: string;
+  durationMinutes: number;
+  onDrop: (clientX: number, clientY: number) => void;
+  /** True while being dragged — drives the availability overlay (see `highlighted`). */
+  onDragStateChange: (dragging: boolean) => void;
+}) {
+  const { dragOffset, handlePointerDown, handlePointerMove, handlePointerUp } = usePendingChipDrag(onDrop);
+  const dragging = dragOffset !== null;
+  useEffect(() => {
+    onDragStateChange(dragging);
+  }, [dragging, onDragStateChange]);
+  return (
+    <div
+      className={styles.floatingChip}
+      // Keeps the at-rest translateX(-50%) centering as part of the drag
+      // transform (an inline transform fully replaces the stylesheet's), and
+      // goes pointer-events: none mid-drag so handleChipDrop's own
+      // elementFromPoint finds the grid cell underneath, not this chip — see
+      // PendingBookingChip's own comments for the full reasoning on both.
+      style={
+        dragOffset
+          ? { transform: `translate(calc(-50% + ${dragOffset.x}px), ${dragOffset.y}px)`, transition: 'none', pointerEvents: 'none' }
+          : undefined
+      }
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      role="button"
+      aria-label={`Drag ${title} into a room and time slot`}
+    >
+      <GripVertical size={14} strokeWidth={2.25} />
+      <span className={styles.floatingChipText}>
+        <span className={styles.floatingChipTitle}>{title}</span>
+        <span className={styles.floatingChipHint}>{durationMinutes} min — drag into a room &amp; time</span>
+      </span>
+    </div>
   );
 }

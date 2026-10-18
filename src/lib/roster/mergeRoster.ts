@@ -3,6 +3,7 @@ import type { ScheduleStateData } from '../schedule/saveState'
 import type { RosterWarning } from './buildRoster'
 import { normalizeName } from './buildRoster'
 import { assignClassTypeColor } from './classTypeColors'
+import { unplacedClassFrom, unplacedClassFromUnprofiled } from './unplacedClasses'
 import type { Class, Instructor } from './types'
 
 /**
@@ -92,21 +93,6 @@ function upsertClassDefinition(definitions: Class[], klass: Class, instructorId:
     definitions.push(updated)
   } else {
     definitions[existingIndex] = updated
-  }
-}
-
-function unplacedClassFrom(klass: Class, instructorId: number, instructorName: string, id: string = crypto.randomUUID()): UnplacedClass {
-  return {
-    id,
-    title: klass.className,
-    type: klass.classDomain,
-    durationMinutes: klass.classDurationMinutes,
-    instructorId,
-    instructorName,
-    roomNeeds: klass.roomNeeds.length > 0 ? klass.roomNeeds : undefined,
-    deliveryFormats: klass.deliveryFormats,
-    maxParticipation: klass.maxParticipation ?? undefined,
-    intensity: klass.intensity,
   }
 }
 
@@ -210,13 +196,19 @@ export function mergeRosterIntoSchedule(currentDoc: ScheduleStateData, newInstru
         unplacedClasses.push(unplacedClassFrom(klass, id, incoming.name))
         upsertClassDefinition(classDefinitions, klass, id, nextClassDefinitionIdFn)
       }
+      // Bin only — never a class definition, so Regenerate can't auto-book
+      // the placeholder duration (see Instructor.unprofiledClasses).
+      for (const klass of incoming.unprofiledClasses ?? []) {
+        newDomainNames.push(klass.classDomain)
+        unplacedClasses.push(unplacedClassFromUnprofiled(klass, id, incoming.name))
+      }
       continue
     }
 
     const matched = candidates.length === 1 ? candidates[0] : resolveByOverlap(candidates, incoming)
 
     if (!matched) {
-      for (const klass of incoming.classes) {
+      for (const klass of [...incoming.classes, ...(incoming.unprofiledClasses ?? [])]) {
         rosterWarnings.push({
           type: 'unclaimed-class-profile',
           instructorName: incoming.name,
@@ -263,6 +255,19 @@ export function mergeRosterIntoSchedule(currentDoc: ScheduleStateData, newInstru
         newDomainNames.push(klass.classDomain)
         unplacedClasses.push(unplacedClassFrom(klass, matched.id, matched.name))
       }
+    }
+
+    // Claimed classes with no usable Class Profile: bin only (never a class
+    // definition — see the new-instructor branch above), and only when this
+    // instructor doesn't already have that class on the calendar or in the
+    // bin, so re-running Add New never piles up duplicate placeholders. Once
+    // a real profile arrives, the loop above refreshes that same bin entry
+    // in place with the real duration (and drops the placeholder note).
+    for (const klass of incoming.unprofiledClasses ?? []) {
+      const known = new Set(knownClasses(matched.id).map(normalizeName))
+      if (known.has(normalizeName(klass.className))) continue
+      newDomainNames.push(klass.classDomain)
+      unplacedClasses.push(unplacedClassFromUnprofiled(klass, matched.id, matched.name))
     }
   }
 

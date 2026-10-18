@@ -16,10 +16,14 @@
 }
 
 .card {
-  width: 1200px;
-  max-width: 96vw;
-  height: 90vh;
-  max-height: 90vh;
+  /* Same footprint as MonthDayPreviewModal's card — a whole business day at
+     a glance, with enough rows visible to place a class without scrolling. */
+  width: 96vw;
+  max-width: 1800px;
+  height: 92vh;
+  max-height: 92vh;
+  /* Positioning context for .floatingChip. */
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--page-bg);
@@ -42,37 +46,57 @@
   }
 }
 
+/* Same header as MonthDayPreviewModal: the class title, the floating chip
+   (absolutely centered over it), and the close button. */
 .header {
   flex: 0 0 auto;
+  position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 24px 0;
-}
-
-.headerText {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  min-height: 72px;
+  box-sizing: border-box;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--sched-border-horizontal);
 }
 
 .title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--sched-text-muted);
-}
-
-.subtitle {
-  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 20px;
   font-weight: 400;
   color: var(--sched-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.titleRow {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+/* Same conflict red the rest of the app uses (#ef4444). */
+.conflictWarning {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #ef4444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conflictWarning svg {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .closeButton {
@@ -95,71 +119,24 @@
   color: var(--sched-accent);
 }
 
-.instructions {
-  flex: 0 0 auto;
-  margin: 12px 24px 0;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--sched-text);
-}
-
-.legend {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 18px;
-  margin: 10px 24px 0;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--sched-border-horizontal);
-  font-size: 13px;
-  color: var(--sched-text-muted);
-}
-
-.legendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.swatch {
-  flex: 0 0 auto;
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  box-sizing: border-box;
-}
-
-.swatchPending {
-  background: var(--sched-accent);
-}
-
-.swatchConflict {
-  background: #ef4444;
-}
-
-.swatchInstructorConflict {
-  background: #f59e0b;
-}
-
-.swatchOpen {
-  background: transparent;
-  border: 1px solid var(--sched-border-strong);
-}
-
-.legendWarning {
-  font-weight: 400;
-  color: #ef4444;
-}
-
-/* No enclosing border/box any more — the reused TimelineView's own gridlines
-   and sticky headers already give it plenty of visible structure on their
-   own. */
+/* Flush under the header, same as MonthDayPreviewModal's grid — the reused
+   TimelineView's own gridlines and sticky headers give it structure. */
 .gridWrapper {
   flex: 1;
   min-height: 0;
   display: flex;
-  margin: 14px 24px 0;
+}
+
+/* The class being placed keeps this pending look (same as its floating chip)
+   until Place/Confirm — overrides EventBlock's own amber .pending (one
+   attribute selector deeper, so no !important needed). */
+.gridWrapper [data-pending] {
+  border: 2px dotted var(--sched-accent);
+  background: color-mix(in srgb, var(--sched-accent) 16%, var(--sched-surface));
+}
+
+.gridWrapper [data-pending]:hover {
+  background: color-mix(in srgb, var(--sched-accent) 24%, var(--sched-surface));
 }
 
 .footer {
@@ -167,6 +144,7 @@
   display: flex;
   gap: 12px;
   padding: 16px 24px 20px;
+  border-top: 1px solid var(--sched-border-horizontal);
 }
 
 .cancelButton,
@@ -199,4 +177,74 @@
 
 .confirmButton:hover {
   background: var(--sched-row-hover);
+}
+
+.confirmButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.confirmButton:disabled:hover {
+  background: transparent;
+}
+
+/* The not-yet-placed class, floating centered over the header (see
+   FloatingPlacementChip) — theme accent, dotted outline. */
+.floatingChip {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 2px dotted var(--sched-accent);
+  border-radius: var(--sched-radius-sm);
+  background: color-mix(in srgb, var(--sched-accent) 16%, var(--sched-surface));
+  color: var(--sched-accent);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  animation: chipFadeIn 160ms ease-out;
+}
+
+.floatingChip:active {
+  cursor: grabbing;
+}
+
+@keyframes chipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatingChip {
+    animation: none;
+  }
+}
+
+.floatingChipText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.floatingChipTitle {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.floatingChipHint {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--sched-accent) 75%, var(--sched-text));
 }

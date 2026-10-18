@@ -76,7 +76,15 @@ export function useAutoScroll(
 
       if (axis === 'y' || axis === 'both') {
         const pos = clientYRef.current;
-        const edgeStart = rect.top;
+        // The top scroll zone starts BELOW any sticky header inside the
+        // container (TimelineView/WeekViewVertical tag theirs with
+        // data-autoscroll-sticky-top), not at the container's own top edge —
+        // that strip is entirely covered by the header, so scrolling up used
+        // to require dragging onto the header itself, which read as "can't
+        // drag upward" whenever the grid was scrolled down at all. Same idea
+        // as `startInset` for the x axis's sticky room column.
+        const stickyTop = container.querySelector<HTMLElement>(':scope > * > [data-autoscroll-sticky-top], :scope > [data-autoscroll-sticky-top]');
+        const edgeStart = stickyTop ? Math.max(rect.top, stickyTop.getBoundingClientRect().bottom) : rect.top;
         const edgeEnd = rect.bottom;
         const distFromStart = pos - edgeStart;
         const distFromEnd = edgeEnd - pos;

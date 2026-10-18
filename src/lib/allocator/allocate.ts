@@ -40,7 +40,7 @@ const ONLY_ONE_CLASS_PER_DAY_COMFORT: ConsecutiveComfort = 'I prefer to teach on
  * frontend's manual "create event" flow. Only the automatic booking loop
  * below skips them.
  */
-const NON_AUTO_SCHEDULED_DOMAINS = new Set(['Foundational Courses'])
+export const NON_AUTO_SCHEDULED_DOMAINS = new Set(['Foundational Courses'])
 
 /** Room/space features that any room trivially satisfies — not real requirements to match against. */
 const NEEDS_ALWAYS_SATISFIED = new Set(['No specific room features required', 'Other'])

@@ -269,3 +269,70 @@ describe('mergeRosterIntoSchedule', () => {
     expect(result.classDefinitions).toEqual([])
   })
 })
+
+describe('mergeRosterIntoSchedule unprofiled classes', () => {
+  const unprofiled = { ...makeClass({ id: -1, className: 'Tai Chi', roomNeeds: [] }), reason: 'no-profile' as const }
+
+  it("bins a matched instructor's unprofiled class with the placeholder note, never as a class definition", () => {
+    const doc = makeDoc({ instructors: [makeInstructorOption()] })
+
+    const { doc: result } = mergeRosterIntoSchedule(doc, [makeIncomingInstructor({ classes: [], unprofiledClasses: [unprofiled] })])
+
+    expect(result.unplacedClasses).toEqual([
+      expect.objectContaining({
+        title: 'Tai Chi',
+        durationMinutes: 60,
+        instructorId: 1,
+        note: 'No Class Profile found. Class duration was set to the default 60 mins.',
+      }),
+    ])
+    expect(result.classDefinitions).toEqual([])
+  })
+
+  it('does not add a second placeholder when Add New is run again', () => {
+    const doc = makeDoc({ instructors: [makeInstructorOption()] })
+    const incoming = [makeIncomingInstructor({ classes: [], unprofiledClasses: [unprofiled] })]
+
+    const first = mergeRosterIntoSchedule(doc, incoming).doc
+    const second = mergeRosterIntoSchedule(first, incoming).doc
+
+    expect(second.unplacedClasses).toHaveLength(1)
+  })
+
+  it('skips the placeholder when that class is already on the calendar', () => {
+    const doc = makeDoc({ instructors: [makeInstructorOption()], events: [makeEvent({ title: 'Tai Chi' })] })
+
+    const { doc: result } = mergeRosterIntoSchedule(doc, [makeIncomingInstructor({ classes: [], unprofiledClasses: [unprofiled] })])
+
+    expect(result.unplacedClasses).toEqual([])
+  })
+
+  it('refreshes the placeholder in place once a real Class Profile arrives', () => {
+    const doc = makeDoc({ instructors: [makeInstructorOption()] })
+    const withPlaceholder = mergeRosterIntoSchedule(doc, [makeIncomingInstructor({ classes: [], unprofiledClasses: [unprofiled] })]).doc
+
+    const { doc: result } = mergeRosterIntoSchedule(withPlaceholder, [
+      makeIncomingInstructor({ classes: [makeClass({ className: 'Tai Chi', classDurationMinutes: 75 })] }),
+    ])
+
+    expect(result.unplacedClasses).toHaveLength(1)
+    expect(result.unplacedClasses[0]).toEqual(expect.objectContaining({ title: 'Tai Chi', durationMinutes: 75 }))
+    expect(result.unplacedClasses[0].note).toBeUndefined()
+  })
+
+  it("recovers an old save's never-booked class into the bin without touching anything on the calendar", () => {
+    const placed = makeEvent({ id: 'placed', title: 'Swimming', classRequestId: 1 })
+    const doc = makeDoc({
+      instructors: [makeInstructorOption()],
+      events: [placed],
+      classDefinitions: [makeClass({ id: 1, className: 'Swimming' }), makeClass({ id: 2, className: 'Yoga' })],
+    })
+
+    const { doc: result } = mergeRosterIntoSchedule(doc, [
+      makeIncomingInstructor({ classes: [makeClass({ className: 'Swimming' }), makeClass({ className: 'Yoga' })] }),
+    ])
+
+    expect(result.events).toEqual([placed])
+    expect(result.unplacedClasses).toEqual([expect.objectContaining({ title: 'Yoga' })])
+  })
+})

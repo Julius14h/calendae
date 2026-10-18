@@ -143,6 +143,15 @@ export function formatBusinessHourLabel(hour: number): string {
   return `${display}:00 ${period}`;
 }
 
+/** Minutes since midnight -> "9:40 AM" — for availability blocks, which (unlike the grid's own hour labels) can start/end on any minute the instructor typed into their form. */
+export function formatMinutesOfDay(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  const period = hours < 12 ? 'AM' : 'PM';
+  const displayHour = hours % 12 === 0 ? 12 : hours % 12;
+  return `${displayHour}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
 export function formatTimeOfDay(date: Date): string {
   const hours = date.getHours();
   const minutes = date.getMinutes();

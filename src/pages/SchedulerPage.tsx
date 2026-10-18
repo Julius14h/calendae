@@ -24,12 +24,13 @@ import { REAL_ROOMS } from '../lib/allocator/rooms'
 import { applyRecurrenceEdit, fillDueRecurringOccurrences, regenerateWeek } from '../lib/allocator/regenerateWeek'
 import { IS_DEMO_MODE, loadDemoCsvs } from '../lib/demo/demoMode'
 import type { RosterWarning } from '../lib/roster/buildRoster'
-import { buildRoster } from '../lib/roster/buildRoster'
+import { buildRoster, unprofiledClassNote } from '../lib/roster/buildRoster'
 import { assignClassTypeColor } from '../lib/roster/classTypeColors'
 import type { MergeWarning } from '../lib/roster/mergeRoster'
 import { mergeRosterIntoSchedule } from '../lib/roster/mergeRoster'
 import { parseDedupedClassProfileRows } from '../lib/roster/parseClassProfileCsv'
 import { parseDedupedInstructorRows } from '../lib/roster/parseInstructorSurveyCsv'
+import { binClassesForGeneratedSchedule } from '../lib/roster/unplacedClasses'
 import type { Instructor } from '../lib/roster/types'
 import { exportScheduleToXlsx } from '../lib/schedule/exportSchedule'
 import type { ScheduleStateData } from '../lib/schedule/saveState'
@@ -111,10 +112,8 @@ function reviewIssuesFromRosterWarnings(warnings: RosterWarning[]): ReviewIssue[
         id: `roster-${i}`,
         category: 'Claimed but missing a class profile',
         title: `${warning.className} — ${warning.instructorName}`,
-        detail:
-          warning.reason === 'no-profile'
-            ? 'No matching Class Profile submission was found for this class.'
-            : "This class's Class Profile submission is missing a duration.",
+        // Same wording as the placeholder's own Classes Bin note.
+        detail: unprofiledClassNote(warning.reason),
       }
     }
     if (warning.type === 'auto-matched-by-email') {
@@ -180,7 +179,9 @@ function buildDocumentFromRoster(
   rooms: Resource[],
   range: { start: Date; end: Date } = { start: scheduleStart, end: scheduleEnd },
 ): { doc: ScheduleStateData; warnings: AllocationWarning[] } {
-  const domainNames = Array.from(new Set(instructors.flatMap((instructor) => instructor.classes.map((c) => c.classDomain))))
+  const domainNames = Array.from(
+    new Set(instructors.flatMap((instructor) => [...instructor.classes, ...(instructor.unprofiledClasses ?? [])].map((c) => c.classDomain))),
+  )
   const classTypes: ClassTypeOption[] = assignClassTypeColor([], domainNames)
 
   const instructorOptions: InstructorOption[] = instructors.map((instructor) => ({
@@ -204,7 +205,17 @@ function buildDocumentFromRoster(
   const classDefinitions = instructors.flatMap((instructor) => instructor.classes)
 
   return {
-    doc: { events, resources: rooms, classTypes, instructors: instructorOptions, unplacedClasses: [], classDefinitions, resolvedIssueIds: [] },
+    doc: {
+      events,
+      resources: rooms,
+      classTypes,
+      instructors: instructorOptions,
+      // Whatever couldn't go on the calendar goes in the bin instead of
+      // silently disappearing — see binClassesForGeneratedSchedule.
+      unplacedClasses: binClassesForGeneratedSchedule(instructors, events),
+      classDefinitions,
+      resolvedIssueIds: [],
+    },
     warnings,
   }
 }

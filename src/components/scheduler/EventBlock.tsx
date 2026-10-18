@@ -472,6 +472,9 @@ function EventBlockImpl({
       ].join(' ').trim()}
       style={style}
       data-scheduler-event={event.id}
+      // Lets a host restyle its own pending placement (see
+      // MonthMoveConflictModal.module.css) without a new prop.
+      data-pending={event.pending ? '' : undefined}
       onPointerDown={editable ? moveDrag.onPointerDown : undefined}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}

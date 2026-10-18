@@ -491,8 +491,16 @@ function regenerateOneWeek(
 
   // The full roster, minus whatever's already pinned this week — the "as
   // if for the first time" pool.
+  // A class already sitting in the Classes Bin (e.g. one Generate couldn't
+  // place, or one Add New brought in) is represented by that bin entry
+  // instead of its definition — the bin entry carries the user's own edits,
+  // and attempting both would try (and could book) the same class twice.
+  // Without includeBinItems, it stays put in the bin rather than also being
+  // auto-booked behind its back.
+  const binClassKeys = new Set(doc.unplacedClasses.map((item) => classKey(item.instructorId, item.title)))
   for (const definition of doc.classDefinitions) {
     if (excludedDefinitionIds.has(definition.id)) continue
+    if (binClassKeys.has(classKey(definition.instructorId, definition.className))) continue
     const oldEvent = rosterBackedByDefinitionId.get(definition.id)
     const effective = oldEvent ? effectiveDefinitionFor(oldEvent, definition) : definition
     addToPool(effective)

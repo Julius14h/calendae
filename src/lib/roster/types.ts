@@ -43,6 +43,13 @@ export interface Instructor {
   availability: AvailabilityBlock[]
   /** Free text from "Anything else you would like to share about your availability or scheduling preferences? (Optional)" — verbatim, never parsed/interpreted, same reasoning as blockedOutDates. Optional purely so existing hand-written Instructor fixtures across the test suite don't all need updating for a field that's display-only so far. */
   anythingElse?: string
+  /** Claimed on the Availability Form but with no usable Class Profile (none submitted, or one without a duration) — kept OUT of `classes` so the allocator never books a guessed duration, but carried along at a placeholder duration so Generate/Add New can drop them in the Classes Bin for manual placement instead of losing them entirely (see buildRoster.ts). Optional for the same fixture reason as anythingElse. */
+  unprofiledClasses?: UnprofiledClass[]
+}
+
+/** See Instructor.unprofiledClasses. `classDurationMinutes` is always the placeholder (see UNPROFILED_CLASS_DURATION_MINUTES in buildRoster.ts); `reason` picks the bin note's wording. */
+export interface UnprofiledClass extends Class {
+  reason: 'no-profile' | 'no-duration'
 }
 
 export interface Roster {

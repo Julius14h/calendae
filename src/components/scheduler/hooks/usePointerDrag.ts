@@ -41,6 +41,7 @@ export function usePointerDrag({
   const autoScroll = useAutoScroll(containerRef, autoScrollThreshold, autoScrollSpeed, autoScrollAxis, autoScrollStartInset);
   const draggingRef = useRef(false);
   const lastClientRef = useRef({ x: 0, y: 0 });
+  const previousUserSelectRef = useRef('');
 
   const computePoint = useCallback((clientX: number, clientY: number): DragPoint => {
     const container = containerRef.current;
@@ -67,6 +68,7 @@ export function usePointerDrag({
     if (!draggingRef.current) return;
     draggingRef.current = false;
     autoScroll.stop();
+    document.body.style.userSelect = previousUserSelectRef.current;
     window.removeEventListener('pointermove', handlePointerMove);
     window.removeEventListener('pointerup', handlePointerUpRef.current);
     onEnd(computePoint(e.clientX, e.clientY));
@@ -80,6 +82,11 @@ export function usePointerDrag({
     e.stopPropagation();
     draggingRef.current = true;
     lastClientRef.current = { x: e.clientX, y: e.clientY };
+    // Window-level listeners (not pointer capture — see above) mean the
+    // browser still treats this as a text-selection drag, highlighting
+    // header labels the pointer passes over. Suppressed for the drag only.
+    previousUserSelectRef.current = document.body.style.userSelect;
+    document.body.style.userSelect = 'none';
     onStart?.(computePoint(e.clientX, e.clientY));
     autoScroll.start(() => {
       onMove(computePoint(lastClientRef.current.x, lastClientRef.current.y));
