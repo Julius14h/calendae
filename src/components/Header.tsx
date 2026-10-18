@@ -63,7 +63,7 @@ export default function Header({
         <span className="app-header-brand">Calendae</span>
         {IS_DEMO_MODE && (
           <span className="app-header-demo-badge" title="Made-up instructors and classes. Edits aren't saved — reload to reset.">
-            Demo · sample data
+            sample data
           </span>
         )}
       </div>
