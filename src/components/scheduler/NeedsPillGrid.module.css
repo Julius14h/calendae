@@ -1,0 +1,141 @@
+.needsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.needPill {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--sched-border);
+  background: transparent;
+  color: var(--sched-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.needPill:hover {
+  border-color: var(--sched-accent);
+}
+
+/* Was previously undefined here, so a focused pill fell back to the
+   browser's own default outline (a plain dark ring, not the themed accent —
+   this is what "different colour, not the pastel" in a focused pill turned
+   out to be) instead of the same var(--sched-accent) ring every other
+   focusable control in this app already uses. */
+.needPill:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+.needPillSelected {
+  background: var(--sched-accent);
+  border-color: var(--sched-accent);
+  color: #fff;
+}
+
+/* selectedStyle="outline" — see NeedsPillGridProps' own doc comment (used by
+   Delivery, a small closed set closer to a single-choice toggle than an
+   open multi-select). */
+.needPillSelectedOutline {
+  background: transparent;
+  border-color: var(--sched-accent);
+  color: var(--sched-accent);
+}
+
+.addNeedPill {
+  border-style: dashed;
+  color: var(--sched-text-muted);
+}
+
+/* 'list' variant (see NeedsPillGrid.tsx) — a plain vertical list, no pill
+   border/background at all; a checkmark (kept in layout via `visibility:
+   hidden` rather than not rendered, so unselected rows don't shift when a
+   neighbor toggles) marks which options are selected instead. */
+/* No pill border/fill at all — plain text stacked one per line, selected
+   marked by text color alone (see .needListItemSelected). Its own scrollable
+   column (same reasoning the old variant="pill-list" had) so a long list
+   adds a fixed amount of height to whatever it's embedded in, rather than
+   growing the whole modal unbounded. */
+.needsList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.needListItem {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  text-align: left;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.needListItem:hover {
+  color: var(--sched-accent);
+}
+
+.needListItem:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+.needListItemSelected {
+  color: var(--sched-accent);
+}
+
+.newRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* No box at all — same fully plain, borderless treatment used everywhere
+   else now (see EventPopover.module.css's own .modalTextInput). */
+.newInput {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+}
+
+.newInput:focus-visible {
+  outline: none;
+}
+
+.iconButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text-muted);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.iconButton:hover {
+  border-color: var(--sched-border);
+  color: var(--sched-accent);
+}

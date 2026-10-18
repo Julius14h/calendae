@@ -1,0 +1,47 @@
+:root {
+    /* Ties the native CSS color-scheme property to this app's own dark-mode
+       toggle (the data-theme attribute), rather than leaving it following
+       the OS's prefers-color-scheme. Anything using the light-dark() CSS
+       function resolves off of *this*. */
+    color-scheme: light;
+    --background: #ffffff;
+    --surface: #f8f9fb;
+    --text: #1f2937;
+    --border: #474747;
+    --primary: #243e96;
+    /* The webpage's own background (body, app header) — a soft neutral
+       rather than a solid accent fill, so the header reads as part of the
+       page instead of a bold colored frame around the white scheduler card. */
+    --page-bg: var(--surface);
+    --title-text: var(--primary);
+    --scheduler-text: #000;
+    --scheduler-text-muted: #000;
+    --header-btn-text: var(--text);
+    --header-date-text: var(--text);
+    /* A lighter tint than --border, used only for the scheduler's horizontal
+       row-separator lines (vertical hour/day gridlines stay on --border). */
+    --scheduler-border-horizontal: color-mix(in srgb, var(--border) 35%, var(--background) 65%);
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+    --background: #131314;
+    --surface: #1f2937;
+    --text: #e3e3e3;
+    --border: #202124;
+    --primary: #4f7cff;
+    /* Its own explicit value rather than deriving from --background or
+       --border, like light mode's page-bg does — deliberately a distinct
+       shade from the scheduler's own (darker) surface. */
+    --page-bg: #1e1f20;
+    /* :root and [data-theme="dark"] both target <html>, so any variable not
+       explicitly reset here keeps leaking through from :root's light-mode
+       value — these four exist there for light mode only, so they need
+       resetting back to their original (pre-override) dark-mode behavior. */
+    --title-text: var(--primary);
+    --scheduler-text: var(--text);
+    --scheduler-text-muted: color-mix(in srgb, var(--text) 55%, transparent);
+    --scheduler-border-horizontal: var(--border);
+    --header-btn-text: var(--text);
+    --header-date-text: var(--text);
+}

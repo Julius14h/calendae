@@ -1,0 +1,137 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  /* Above EventPopover.tsx's own .popover (z-index 200) and its accent strip
+     (199) — this opens FROM the popover's own header button and should sit
+     on top of it, not behind it. */
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  animation: backdropFadeIn 200ms ease-out;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card {
+  width: 480px;
+  max-width: 92vw;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  /* Same two departures from RoomModal's own shell as EventPopover.tsx's own
+     .popover — see its doc comments: var(--page-bg) (a soft grey rather than
+     pure white) instead of var(--sched-surface), and a squarer, hardcoded
+     8px corner instead of var(--sched-radius) (16px, shared elsewhere) — this
+     modal opens directly out of that popover's own header button, so it
+     should read as the same design system, not a visually distinct dialog. */
+  background: var(--page-bg);
+  color: var(--sched-text);
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: cardFadeIn 250ms ease-out;
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .card {
+    animation: none;
+  }
+}
+
+.header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 28px 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.closeButton {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.closeButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 18px 28px;
+  border-top: 1px solid var(--sched-border-horizontal);
+}
+
+.saveButton,
+.cancelButton {
+  flex: 1;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 9px 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.saveButton {
+  border: 1px solid var(--sched-accent);
+  background: transparent;
+  color: var(--sched-accent);
+  transition: background-color 120ms ease;
+}
+
+.saveButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.cancelButton {
+  border: 1px solid var(--sched-border);
+  background: var(--sched-surface);
+  color: var(--sched-text);
+  transition: background-color 120ms ease;
+}
+
+.cancelButton:hover {
+  background: var(--sched-row-hover);
+}

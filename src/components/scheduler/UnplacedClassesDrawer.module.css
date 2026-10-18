@@ -1,0 +1,195 @@
+/* Push-layout shell — mirrors SchedulerDrawer.module.css's own
+   .drawer/.drawerOpen/.content pattern exactly (width-animated flex
+   sibling, no backdrop) but on the opposite side, since Scheduler.tsx
+   renders SchedulerDrawer before .mainColumn and this after it. */
+.drawer {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  background: var(--page-bg);
+  transition: width 220ms ease, background-color 300ms ease-in-out;
+}
+
+.drawerOpen {
+  width: 280px;
+}
+
+.content {
+  width: 280px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sched-border-strong) transparent;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.closeButton {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.closeButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.emptyState {
+  margin: 0;
+  font-size: 14px;
+  color: var(--sched-text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Same "tonal fill + left accent bar" language as EventBlock.module.css's
+   own .event — reads as the same class, just not on the grid yet, rather
+   than a differently-designed object. The whole row is the drag surface
+   (see UnplacedClassesDrawer.tsx's own onPointerDown), matching .event's
+   own whole-block drag target rather than a separate small handle. */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px 6px 0;
+  border-left: 3px solid var(--event-color, var(--sched-accent));
+  border-radius: var(--sched-radius-sm);
+  background: color-mix(in srgb, var(--event-color, var(--sched-accent)) 22%, var(--sched-surface));
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.row:active {
+  cursor: grabbing;
+}
+
+/* The real row stays in place (not removed from flow) while its own chip
+   floats above the calendar — dimmed so it reads as "in flight" rather than
+   a second, separate copy. */
+.rowDragging {
+  opacity: 0.4;
+}
+
+/* Same formula as EventBlock.module.css's own .avatar — colored per
+   INSTRUCTOR (--avatar-color, set inline from utils/instructorColor.ts),
+   not the class's own domain color, so the same instructor reads as the
+   same color everywhere in the scheduler. */
+.avatar {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+  color: var(--avatar-color);
+  background: color-mix(in srgb, var(--avatar-color) 22%, var(--sched-surface));
+}
+
+.textStack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 1px;
+}
+
+.rowTitle {
+  font-size: 12.5px;
+  /* Same slight bump as EventBlock.module.css's own .title — see that
+     file's comment for why 500 over .rowMeta's inherited 400. */
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--sched-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--sched-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dismissButton {
+  flex: 0 0 auto;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text-muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.dismissButton:hover {
+  background: color-mix(in srgb, #ef4444 16%, transparent);
+  color: #ef4444;
+}
+
+/* Same tonal-fill formula as .row itself — the floating clone dragged over
+   the calendar looks like the exact same chip, just detached and following
+   the cursor (top/left/width set inline from the row's own captured rect,
+   not centered at a fixed viewport spot like PendingBookingChip's own rest
+   position, since this chip's rest position is wherever it sits in the
+   list). */
+.floatingChip {
+  position: fixed;
+  z-index: 250;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px 6px 0;
+  border-left: 3px solid var(--event-color, var(--sched-accent));
+  border-radius: var(--sched-radius-sm);
+  background: color-mix(in srgb, var(--event-color, var(--sched-accent)) 30%, var(--sched-surface));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+}

@@ -1,0 +1,645 @@
+.popover {
+  position: fixed;
+  z-index: 200;
+  width: 440px;
+  box-sizing: border-box;
+  /* Deliberately var(--page-bg) (theme.css's own soft-neutral page/app-header
+     shade) rather than var(--sched-surface) (pure white in light mode) — a
+     faint grey tint reads as a distinct floating card instead of a plain
+     white rectangle indistinguishable from the page behind it. */
+  background: var(--page-bg);
+  color: var(--sched-text);
+  /* Deliberately its own smaller value, not var(--sched-radius) (16px,
+     shared by other components across the app) — a squarer, only-slightly-
+     rounded corner is specific to this card's own redesigned look, not a
+     change to the app's general corner-rounding scale. */
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  animation: popoverFadeIn 140ms ease-out;
+  /* Belt-and-suspenders alongside EventPopover.tsx's own ResizeObserver
+     reposition: that keeps the WHOLE card on-screen as its content grows,
+     but a genuinely short viewport (or enough content at once — Repeat,
+     Ends, Room needs, a scope prompt, an issue box) can still exceed the
+     viewport's own height outright. Scrolling the card itself is what keeps
+     every control reachable in that case instead of clipping silently off
+     the bottom with no way back to it. */
+  /* 12px here must match POPOVER_MARGIN_PX in EventPopover.tsx. */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Played while EventPopover.tsx's own `phase` is 'closing' — a snapshot of
+   the last real event keeps rendering for exactly this animation's
+   duration (see EXIT_ANIMATION_MS) so there's real content to fade out
+   instead of the popover just vanishing. pointer-events: none so a
+   fading-out popover can't still be clicked/dragged mid-exit. */
+.popoverClosing {
+  animation: popoverFadeOut 140ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes popoverFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}
+
+/* The thin "second sheet peeking out from behind" accent strip — see
+   EventPopover.tsx's own doc comment on where its position comes from.
+   Purely decorative: never intercepts pointer events, sized/positioned so
+   only a sliver above the card is ever actually visible (its own height
+   mostly sits hidden underneath the popover, which paints over it at a
+   higher z-index). */
+.popoverAccentStrip {
+  position: fixed;
+  z-index: 199;
+  width: 440px;
+  height: 20px;
+  box-sizing: border-box;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--sched-accent) 78%, white 22%), var(--sched-accent));
+  border-radius: 8px;
+  box-shadow: 0 -2px 10px color-mix(in srgb, var(--sched-accent) 35%, transparent);
+  pointer-events: none;
+}
+
+/* Icons row on top, title row below — the title deliberately isn't sharing
+   a row with the action buttons any more (it used to), so it has the whole
+   card's width to itself and never has to compete with them for space.
+   No border under either row — the icon row's own buttons already read as
+   a distinct top strip without needing a rule to separate them from the
+   title. */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 10px 0 16px;
+}
+
+.headerTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 6px 0 0;
+}
+
+/* Renders as a real <button> (hover-triggered class-type color picker, see
+   EventPopover.tsx) when the event's type is a known class type, or a plain
+   <span> otherwise — these reset button's own default border/padding/font
+   so both cases look identical. */
+.colorDot {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: none;
+  padding: 0;
+  border-radius: 4px;
+  font: inherit;
+}
+
+button.colorDot {
+  cursor: pointer;
+  transition: transform 100ms ease;
+}
+
+button.colorDot:hover {
+  transform: scale(1.15);
+}
+
+button.colorDot:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--sched-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.iconButton {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-accent);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.iconButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+/* The pin toggle's own "currently pinned" state — same gold as the chip's
+   own pin indicator (see EventBlock.module.css's `.pinIcon`), so the button
+   reads as "this is what's currently on" rather than just another hover
+   target. */
+.iconButtonPinned {
+  color: #d97706;
+}
+
+.iconButtonPinned:hover {
+  background: color-mix(in srgb, #d97706 12%, transparent);
+  color: #d97706;
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 2px 16px 16px;
+}
+
+/* Its own margin-bottom, on top of .body's own row-to-row gap above — a
+   bigger break than between two field rows, so the date reads as still
+   belonging to the header above it rather than as just another row in the
+   details list below. */
+/* Left-margin matches the title's own indent (.colorDot's 14px width plus
+   .headerTitleRow's 10px gap) — the color dot sits above the date's own row
+   with nothing below it to line up with, so the date needs this pushed in
+   by hand to read as flush with the title's own text, not the dot. */
+.dateTimeLine {
+  margin: 0 0 16px 24px;
+  font-size: 12.5px;
+  color: var(--sched-text);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* The Note row's own text can wrap to more than one line — centering the
+   icon against the WHOLE block (the default .row behavior) looks fine for a
+   single line but drifts oddly once it wraps, so this row aligns the icon to
+   the first line instead. */
+.rowAlignStart {
+  align-items: flex-start;
+}
+
+/* The Instructor row IS the "view instructor" trigger (a whole <button>, not
+   a div with a separate trailing icon button) — hovering/focusing it swaps
+   its own leading icon from a plain person glyph to lucide's Eye, so the row
+   itself reads as "click to view" rather than needing a second dedicated
+   button the reference mockup never had. */
+.instructorRow {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--sched-radius-sm);
+}
+
+.instructorIconStack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+}
+
+.instructorIconDefault,
+.instructorIconHover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: opacity 120ms ease;
+}
+
+.instructorIconHover {
+  opacity: 0;
+}
+
+.instructorRow:hover .instructorIconDefault,
+.instructorRow:focus-visible .instructorIconDefault {
+  opacity: 0;
+}
+
+.instructorRow:hover .instructorIconHover,
+.instructorRow:focus-visible .instructorIconHover {
+  opacity: 1;
+}
+
+.instructorRow:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 1px;
+}
+
+/* Every field row's own plain read-only value — actual editing happens in
+   ClassEditModal.tsx instead (opened via the header's pencil button), not
+   through any control on these rows themselves. */
+.readOnlyRowText {
+  font-size: 14.5px;
+  color: var(--sched-text);
+}
+
+/* The "Room needs" row's own multi-value display — each need on its own
+   line (see ROOM_NEEDS_COLLAPSED_COUNT) rather than one long comma-joined
+   line, which wrapped across 2-3 lines and read as noisy for a class with
+   several needs. */
+.readOnlyRowStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expandRowButton {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 0;
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  color: var(--sched-accent);
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+.expandRowButton:hover {
+  opacity: 0.7;
+}
+
+/* The "Note" row (see NoteField.tsx) — a labeled block rather than a plain
+   icon+text .row like the others above, since a note can run to several
+   lines and needs its own header line for the pencil button. */
+.noteSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.noteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.noteLabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--sched-text-muted);
+}
+
+/* Clamped to a handful of lines — long notes still show as much as fits
+   here; NoteField's own pencil button opens NoteModal to read (and edit)
+   the rest, rather than a separate "view full note" button. */
+.noteText {
+  margin: 0;
+  font-size: 14px;
+  color: var(--sched-text);
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.noteEmptyText {
+  margin: 0;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--sched-text-muted);
+}
+
+/* Visually hidden but still focusable/clickable — the "Custom color" option
+   in the color menu forwards a click to this real native picker. Same
+   clip-rect hidden-input pattern as SchedulerDrawer.module.css's own
+   .hiddenColorInput. */
+.hiddenColorInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The "Classes to review" issue attached to this specific event (see
+   Scheduler.tsx matching `issue.eventId` against the open event) — no box/
+   fill of its own any more, just the message centered with its Resolve
+   button below it; still the same red as CreateFab's own warning styling so
+   a viewer recognizes it as the same category of thing, carried entirely by
+   text color now rather than a tinted card. */
+.issueBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  text-align: center;
+}
+
+.issueBoxCategory {
+  font-size: 13px;
+  font-weight: 400;
+  color: #ef4444;
+}
+
+.issueBoxDetail {
+  margin: 0;
+  font-size: 13px;
+  color: var(--sched-text);
+}
+
+/* A solid border-bottom rather than the browser's own default
+   text-decoration underline (which sits noticeably further from the text) —
+   same idea as the app header's own Day/Week/Month tab underline (see
+   Header.css's .app-header-view-btn), just closer to the text than that
+   one's own gap. */
+.issueResolveButton {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 4px 2px 1px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.issueResolveButton:hover {
+  border-bottom-color: #ef4444;
+}
+
+/* Generic "apply this change to just this one, or something broader?" inline
+   prompt — shared by two independent scope decisions in EventPopover.tsx:
+   a Repeat/Ends change on a non-anchor occurrence of an existing recurring
+   series (needsRecurrenceScopeChoice, 3 buttons: Cancel/This-and-following/
+   All), and a Domain/Room-needs/Capacity/Delivery/Intensity change on an
+   event that shares a classRequestId with other placed occurrences of the
+   same class (needsClassFieldScopeChoice, 2 buttons: Just-this/
+   All-of-this-type). No box/fill of its own — just the centered message
+   with its buttons below it, the same treatment as .issueBox above. */
+.confirmScope {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  transform-origin: top;
+  animation: confirmDeleteExpandIn 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmScope {
+    animation: none;
+  }
+}
+
+.confirmScopeText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--sched-text);
+  text-align: center;
+}
+
+.confirmScopeActions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.scopeButton,
+.scopeButtonPrimary {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+
+.scopeButton {
+  color: var(--sched-text);
+}
+
+.scopeButtonPrimary {
+  color: var(--sched-accent);
+  font-weight: 400;
+}
+
+.scopeButton:hover {
+  color: var(--sched-accent);
+}
+
+/* Marks whichever of the two options is CURRENTLY picked (see
+   classFieldScopeChoice's own doc comment) — a lasting highlight, not just
+   hover's own underline, since the choice stays open/changeable until Save
+   actually resolves it rather than resolving the instant it's clicked.
+   Color only, no padding/background/size change — those shifted the OTHER
+   button's own position too (both are centered together as one flex row —
+   see .confirmScopeActions — so widening one changes where the group as a
+   whole centers), reproduced live as "choosing one option moves the text". */
+.scopeButtonChosen {
+  color: var(--sched-accent);
+}
+
+.confirmDelete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  transform-origin: top;
+  animation: confirmDeleteExpandIn 160ms ease-out;
+}
+
+@keyframes confirmDeleteExpandIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0.85) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+/* Played on Cancel (see EventPopover.tsx's `deletePhase`) instead of the
+   block just vanishing — a mirror of confirmDeleteExpandIn, collapsing back
+   toward the row it expanded from. pointer-events: none so it can't be
+   clicked again mid-collapse. */
+.confirmDeleteClosing {
+  animation: confirmDeleteCollapseOut 160ms ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes confirmDeleteCollapseOut {
+  from {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scaleY(0.85) translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confirmDelete {
+    animation: none;
+  }
+}
+
+.confirmDeleteText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--sched-text);
+  text-align: center;
+}
+
+.confirmDeleteActions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+/* Plain text, no pill/outline — same treatment as .scopeButton/
+   .scopeButtonPrimary above, just with Delete in red rather than accent
+   blue to still read as the destructive choice of the two. */
+.cancelDeleteButton,
+.confirmDeleteButton {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 4px 2px 1px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.cancelDeleteButton {
+  color: var(--sched-text);
+}
+
+.confirmDeleteButton {
+  color: #ef4444;
+}
+
+.cancelDeleteButton:hover {
+  border-bottom-color: var(--sched-text);
+}
+
+.confirmDeleteButton:hover {
+  border-bottom-color: #ef4444;
+}
+
+/* Field styling for ClassEditModal.tsx's own body — that component owns just
+   the backdrop/card/header/footer shell (ClassEditModal.module.css); every
+   actual field it renders is authored here in EventPopoverContent (so it can
+   keep using this component's own edit handlers/scope-choice state directly
+   — see ClassEditModal.tsx's own doc comment), so its styling lives
+   alongside the rest of this file's classes rather than a second, mostly-
+   duplicate stylesheet. */
+.modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* font-weight 400 (not the more typical bold form-label treatment) to match
+   the rest of this redesign's own uniform-weight text — see .noteLabel's
+   matching change and the title-weight history in EventPopover.tsx's own
+   commit trail. */
+.modalFieldLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--sched-text-muted);
+}
+
+/* No box at all — same fully plain, borderless treatment as
+   InstructorViewDialog's own Scheduling Preferences fields
+   (.inlineNumberInput/.inlineTextInput) and RoomModal's own .textInput. */
+.modalTextInput {
+  font: inherit;
+  font-size: 15px;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modalTextInput:focus-visible {
+  outline: none;
+}
+
+.modalTextarea {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.modalTextarea:focus-visible {
+  outline: none;
+}

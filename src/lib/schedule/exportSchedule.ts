@@ -1,0 +1,47 @@
+import { utils, write } from 'xlsx'
+import type { Resource, SchedulerEvent } from '../../components/scheduler'
+import { saveFile } from './downloadFile'
+import { exportFilename } from './exportFilename'
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+// Class/instructor names ultimately come from free text real people typed
+// into a survey (e.g. an "Other/ New Class" entry) — not something this app
+// controls the shape of. A value starting with =, +, -, or @ can be
+// interpreted as a FORMULA by Excel/Sheets when this file is later opened,
+// not literal text (the classic "CSV/spreadsheet formula injection"
+// vector). A leading apostrophe forces Excel/Sheets to treat the cell as
+// plain text instead.
+const FORMULA_TRIGGER_CHARS = ['=', '+', '-', '@']
+function sanitizeSpreadsheetCell(value: string): string {
+  return FORMULA_TRIGGER_CHARS.includes(value[0]) ? `'${value}` : value
+}
+
+/** Flattens the current schedule into a row-per-event worksheet, ready for Excel or Google Sheets (which opens .xlsx natively). */
+export function scheduleToRows(events: SchedulerEvent[], resources: Resource[]) {
+  const roomTitle = (id: string) => resources.find((room) => room.id === id)?.title ?? id
+
+  return [...events]
+    .sort((a, b) => a.start.getTime() - b.start.getTime())
+    .map((event) => ({
+      'Class Name': sanitizeSpreadsheetCell(event.title),
+      'Class Type': event.type ?? '',
+      Instructor: sanitizeSpreadsheetCell(event.instructorName),
+      Room: roomTitle(event.resourceId),
+      Date: event.start.toLocaleDateString(),
+      Start: formatTime(event.start),
+      End: formatTime(event.end),
+    }))
+}
+
+/** Downloads the current schedule as an .xlsx file — runs entirely client-side, no backend involved. */
+export async function exportScheduleToXlsx(events: SchedulerEvent[], resources: Resource[], filename = exportFilename('xlsx')): Promise<void> {
+  const worksheet = utils.json_to_sheet(scheduleToRows(events, resources))
+  const workbook = utils.book_new()
+  utils.book_append_sheet(workbook, worksheet, 'Schedule')
+  const bytes = write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer
+  const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  await saveFile(blob, filename, 'Schedule spreadsheet')
+}

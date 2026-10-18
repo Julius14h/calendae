@@ -1,0 +1,94 @@
+.chip {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  /* translate(-50%, 0) is the at-rest position — the drag itself adds a
+     SECOND translate on top via an inline style (see the component's own
+     dragOffset), which would otherwise fight this one for the same
+     property. Every following declaration after `transform` below still
+     applies normally; only the transform value itself gets overridden
+     inline while actively dragging. */
+  transform: translateX(-50%);
+  z-index: 250;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 4px;
+  border: 2px dashed #f59e0b;
+  border-radius: var(--sched-radius-sm);
+  background: color-mix(in srgb, #f59e0b 18%, var(--sched-surface));
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+  animation: chipFadeIn 140ms ease-out;
+}
+
+@keyframes chipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip {
+    animation: none;
+  }
+}
+
+.grabHandle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--sched-radius-sm);
+  color: var(--sched-text);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.grabHandle:active {
+  cursor: grabbing;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.title {
+  font-size: 13px;
+  /* Matches EventBlock.module.css's own .title — a slight bump over the
+     .hint text below it (still inherited 400) rather than a real bold
+     weight; see that file's comment for why 500. */
+  font-weight: 500;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--sched-text-muted);
+}
+
+.cancelButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  border: none;
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text-muted);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.cancelButton:hover {
+  background: color-mix(in srgb, #ef4444 16%, transparent);
+  color: #ef4444;
+}

@@ -1,0 +1,355 @@
+.drawer {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  background: var(--page-bg);
+  /* width stays fast (the open/close slide); background-color gets the
+     slower, page-wide theme-toggle speed instead. */
+  transition: width 220ms ease, background-color 300ms ease-in-out;
+}
+
+.drawerOpen {
+  width: 320px;
+}
+
+/* Fixed width regardless of the outer wrapper's animating width — same
+   curtain-reveal approach as SchedulerDrawer's `.content`. */
+.content {
+  width: 320px;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 44px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--sched-text);
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text-muted);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.closeButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.fieldsWrapper {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.fields {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldLabel {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--sched-text-muted);
+  opacity: 0.75;
+}
+
+/* Pushed to the far right of the Instructor label row via margin-left:
+   auto — an outlined eye (rather than filled) reads as "preview." Its
+   color comes from the icon's own `color` prop in the JSX (the same
+   class-type accent as the other row icons), not from CSS. */
+.viewInstructorButton {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.viewInstructorButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.viewInstructorButton:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+.fieldValue {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.twoColumnRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.dateTimeRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dateTimeText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dateLine {
+  font-size: 14px;
+  color: var(--sched-text-muted);
+}
+
+.timeLine {
+  font-size: 19px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--sched-accent);
+  background: color-mix(in srgb, var(--sched-accent) 16%, var(--sched-surface));
+}
+
+/* No box at all — same fully plain, borderless treatment used everywhere
+   else now (see EventPopover.module.css's own .modalTextInput). Despite the
+   name, this is only ever a plain text <input> now (Class name, New domain
+   name) — Instructor/Domain both use SearchableSelect instead. */
+.select {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 4px 2px;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  cursor: pointer;
+}
+
+.select:focus-visible {
+  outline: none;
+}
+
+/* NewEventDrawer.tsx's own inline "+ Add new domain…" text input — replaces
+   the plain <select> only while typing a brand new one, so its own
+   confirm/cancel icon buttons sit right beside the (reused) .select input
+   instead of below it. */
+.newDomainRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.newDomainIconButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text-muted);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.newDomainIconButton:hover {
+  border-color: var(--sched-border);
+  color: var(--sched-accent);
+}
+
+.deleteButton {
+  width: 100%;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 0;
+  border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  border-radius: var(--sched-radius-sm);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  background: color-mix(in srgb, #ef4444 8%, transparent);
+  color: #ef4444;
+  cursor: pointer;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.deleteButton:hover {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+}
+
+.deleteButton:focus-visible {
+  outline: 2px solid #ef4444;
+  outline-offset: 2px;
+}
+
+/* No enclosing box any more — same treatment as EventPopover.module.css's
+   own .confirmDelete, just centered text/buttons rather than a tinted card. */
+.confirmDelete {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.confirmDeleteText {
+  font-size: 14px;
+  color: var(--sched-text);
+}
+
+.confirmDeleteActions {
+  display: flex;
+  gap: 8px;
+}
+
+.cancelDeleteButton,
+.confirmDeleteButton {
+  flex: 1;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 8px 0;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.cancelDeleteButton {
+  border: 1px solid var(--sched-border);
+  background: var(--sched-surface);
+  color: var(--sched-text);
+}
+
+.cancelDeleteButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.confirmDeleteButton {
+  border: 1px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+}
+
+.confirmDeleteButton:hover {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+}
+
+/* Sits alongside .footerCancelButton in .footerButtonRow now (was a
+   standalone full-width button) — flex: 1 instead of width: 100%, and the
+   old margin-top moved onto the row itself so both buttons share one. */
+.footerButtonRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.createButton {
+  flex: 1;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 9px 0;
+  border: 1px solid var(--sched-accent);
+  background: transparent;
+  color: var(--sched-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.createButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.createButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.footerCancelButton {
+  flex: 1;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  padding: 9px 0;
+  border: 1px solid var(--sched-border);
+  background: var(--sched-surface);
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.footerCancelButton:hover {
+  background: var(--sched-row-hover);
+}
+

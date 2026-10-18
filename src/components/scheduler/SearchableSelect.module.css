@@ -1,0 +1,274 @@
+.select {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--sched-text);
+  background: var(--sched-surface);
+  border: 1px solid var(--sched-border);
+  border-radius: var(--sched-radius-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.trigger:hover {
+  border-color: var(--sched-accent);
+}
+
+/* Open state merges trigger + panel into one continuous shape: same accent
+   border color on both, square corners where they meet, and no border
+   between them (the trigger's own bottom edge is the only line there) —
+   so it reads as one connected control growing taller, not two stacked
+   boxes with a seam. Which corners flatten depends on which side the panel
+   actually opened on (see SearchableSelect.tsx's own panelPosition.direction
+   / .panelUp-.panelDown below) — a trigger near the bottom of the viewport
+   flips its panel upward instead, and the seam moves to the trigger's own
+   top edge accordingly. */
+.trigger[data-open='true'] {
+  border-color: var(--sched-accent);
+  position: relative;
+  z-index: 1;
+}
+
+.trigger[data-open='true'][data-panel-direction='down'] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.trigger[data-open='true'][data-panel-direction='up'] {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* variant="plain" — see SearchableSelectProps' own doc comment. Only drops
+   the box itself; hover/open still read via color (handled by the base
+   rules above, just invisible against a transparent border). */
+.triggerPlain,
+.triggerPlain:hover,
+.triggerPlain[data-open='true'] {
+  border: none;
+  background: transparent;
+  padding: 6px 0;
+  border-radius: 0;
+  font-weight: 400;
+}
+
+.trigger:focus-visible {
+  outline: none;
+}
+
+.value {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  color: var(--sched-text-muted);
+  transition: transform 140ms ease;
+}
+
+.trigger[data-open='true'] .chevron {
+  transform: rotate(180deg);
+  color: var(--sched-accent);
+}
+
+/* position: fixed with its top/left/width set inline from the trigger's own
+   getBoundingClientRect() (see SearchableSelect.tsx's own panelPosition
+   state/comment) — escapes any scrollable/clipping ancestor (a modal's own
+   scrollable body, `overflow: hidden` card, etc.) instead of contributing to
+   its scrollHeight or being clipped by it. z-index high enough to clear
+   ClassEditModal's own backdrop (400, the tallest stacking context a
+   SearchableSelect currently opens inside). */
+.panel {
+  position: fixed;
+  z-index: 1000;
+  /* Its own inline `width` (see SearchableSelect.tsx) matches the trigger,
+     which can be quite narrow for a `variant="plain"` trigger inside a small
+     host (e.g. SchedulerDrawer's own hourRangeBox pill) — min-width keeps
+     option labels ("12:00 PM", etc.) from truncating and, since a plain CSS
+     width can't shrink below min-width, stops the resulting horizontal
+     overflow that was showing a second (horizontal) scrollbar alongside
+     .optionsList's own vertical one. */
+  min-width: 180px;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Same soft grey as every modal's own card background now (see
+     EventPopover.module.css's own .popover) rather than pure white, so a
+     dropdown reads as the same surface language as the rest of this
+     redesign. */
+  background: var(--page-bg);
+  border: 1px solid var(--sched-accent);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Grows directly out of the trigger's own bottom edge — transform-origin:
+   top plus a scaleY entrance reads as the panel expanding out of the block
+   above it, rather than an unrelated menu just appearing. */
+.panelDown {
+  border-top: none;
+  border-radius: 0 0 var(--sched-radius-sm) var(--sched-radius-sm);
+  transform-origin: top;
+  animation: panelExpandIn 140ms ease-out;
+}
+
+/* Flipped — see SearchableSelect.tsx's own panelPosition.direction doc
+   comment (a trigger too close to the bottom of the viewport for the panel
+   to fit below it). Grows out of the trigger's own TOP edge instead, so the
+   seam (and which corners stay square) moves there too. */
+.panelUp {
+  border-bottom: none;
+  border-radius: var(--sched-radius-sm) var(--sched-radius-sm) 0 0;
+  transform-origin: bottom;
+  animation: panelExpandIn 140ms ease-out;
+}
+
+/* transform-origin (set per-direction above) is what actually determines
+   which edge this grows from — the scaleY keyframe itself is the same
+   either way. */
+@keyframes panelExpandIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* Played on close (outside click, Escape, or picking an option) instead of
+   the panel just vanishing — a mirror of panelExpandIn/panelExpandInUp,
+   collapsing back into the trigger it grew out of. pointer-events: none so
+   options can't still be clicked mid-collapse. */
+.panelClosing {
+  animation-name: panelCollapseOut;
+  animation-duration: 140ms;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+}
+
+@keyframes panelCollapseOut {
+  from {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  to {
+    opacity: 0;
+    transform: scaleY(0.85);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+
+.searchRow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-bottom: 1px solid var(--sched-border-horizontal);
+}
+
+.searchIcon {
+  flex: 0 0 auto;
+  color: var(--sched-text-muted);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+}
+
+.searchInput:focus {
+  outline: none;
+}
+
+.optionsList {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* The inner, per-group <ul> nested inside .optionsList (see
+   SearchableSelect.tsx) — purely structural, no scrolling/height of its
+   own. Every group (including the implicit single group an ungrouped list
+   still renders) used to reuse .optionsList itself here too, nesting two
+   independently max-height/overflow-y elements inside each other — visually
+   two scrollbars stacked for what reads as one list. */
+.optionsGroup {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.groupLabel {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sched-text-muted);
+}
+
+.option {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--sched-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--sched-radius-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color 100ms ease;
+}
+
+.option:hover,
+.option:focus-visible {
+  background: var(--sched-row-hover);
+  outline: none;
+}
+
+.option[aria-selected='true'] {
+  color: var(--sched-accent);
+}
+
+.emptyState {
+  padding: 10px 8px;
+  font-size: 13px;
+  color: var(--sched-text-muted);
+  text-align: center;
+}

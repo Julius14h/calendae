@@ -1,0 +1,81 @@
+.root {
+  position: fixed;
+  z-index: 200;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  box-sizing: border-box;
+  background: var(--page-bg);
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  animation: actionsFadeIn 140ms ease-out;
+}
+
+/* While no instructor is assigned yet, the picker stacks above the button
+   row instead of sitting inline beside it — "assign the instructor first,
+   then Book/Cancel" reads top-to-bottom rather than all in one row. */
+.rootStacked {
+  flex-direction: column;
+  min-width: 200px;
+}
+
+@keyframes actionsFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    animation: none;
+  }
+}
+
+.buttonRow {
+  display: flex;
+  gap: 8px;
+}
+
+.bookButton,
+.cancelButton {
+  flex: 1;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, opacity 120ms ease;
+}
+
+.bookButton {
+  border: 1px solid var(--sched-accent);
+  background: transparent;
+  color: var(--sched-accent);
+}
+
+.bookButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.bookButton:disabled {
+  background: var(--sched-accent);
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cancelButton {
+  border: 1px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+}
+
+.cancelButton:hover {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+}

@@ -1,0 +1,587 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  /* Above EventPopover.module.css's own z-index: 200 — opening this from
+     the event popover's "View instructor" button should cover it (the
+     popover closes outright at the same time, but still fades out over
+     this brief moment, so it needs to actually render underneath). */
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  animation: backdropFadeIn 200ms ease-out;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card {
+  width: 760px;
+  max-width: 92vw;
+  height: 88vh;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--page-bg);
+  color: var(--sched-text);
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: cardFadeIn 250ms ease-out;
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .card {
+    animation: none;
+  }
+}
+
+.header {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 16px 16px 0;
+}
+
+/* Edit-name (left) and close (right) sit absolute in the header's corners,
+   above the identity block below — no centered title here since the name
+   lives in the identity row instead. */
+.editNameButton {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-accent);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.editNameButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.closeButton {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.closeButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.identity {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 32px 20px;
+}
+
+.avatar {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--sched-accent);
+  background: color-mix(in srgb, var(--sched-accent) 14%, var(--sched-surface));
+}
+
+.identityText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--sched-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roleLabel {
+  font-size: 15px;
+  color: var(--sched-text-muted);
+}
+
+.nameEditRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Styled to look like the plain title text with just an underline, rather
+   than a boxed input — the underline itself is what signals "editable now,"
+   the same way the row selects elsewhere in this dialog stay borderless
+   until interacted with. */
+.nameInput {
+  flex: 1;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 400;
+  padding: 0 0 2px;
+  border: none;
+  border-bottom: 1px solid var(--sched-accent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--sched-text);
+  min-width: 0;
+}
+
+.nameInput:focus-visible {
+  outline: none;
+}
+
+.saveNameButton,
+.cancelNameButton {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.saveNameButton:hover,
+.cancelNameButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--sched-text-muted);
+}
+
+.emptyState {
+  margin: 0;
+  font-size: 15px;
+  color: var(--sched-text-muted);
+}
+
+/* Bordered container wrapping a set of rows, dividers between them via the
+   adjacent-sibling border rather than :last-child exclusion. */
+/* No enclosing border/card box any more — a plain flat list, its own rows
+   separated only by .boxRow's own divider. */
+.boxList {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.boxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  font-size: 15px;
+  color: var(--sched-text);
+}
+
+.boxRow + .boxRow {
+  border-top: 1px solid var(--sched-border-horizontal);
+}
+
+.statusDot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sched-accent);
+}
+
+.dayName {
+  flex: 0 0 auto;
+  min-width: 90px;
+  font-weight: 400;
+}
+
+.timeRange {
+  flex: 1;
+  min-width: 0;
+  color: var(--sched-text-muted);
+}
+
+.className {
+  flex: 1;
+  min-width: 0;
+}
+
+.prefLabel {
+  flex: 1;
+  min-width: 0;
+  color: var(--sched-text-muted);
+}
+
+.prefValue {
+  flex: 0 0 auto;
+  font-weight: 400;
+  text-align: right;
+}
+
+.freeTextNote {
+  margin: 0;
+  font-size: 15px;
+  color: var(--sched-text);
+  white-space: pre-wrap;
+}
+
+/* Small inline inputs used by Scheduling Preferences / Blocked-Out Dates rows
+   while editing — sized to sit inline in a .boxRow next to its label, rather
+   than stretching the whole row like .nameInput does in the header. */
+.inlineNumberInput,
+.inlineTextInput {
+  flex: 0 0 auto;
+  width: 120px;
+  font: inherit;
+  font-size: 15px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sched-text);
+}
+
+.inlineTextInput {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.inlineNumberInput:focus-visible,
+.inlineTextInput:focus-visible {
+  outline: none;
+}
+
+/* "Anything Else" in edit mode — same visual weight as .freeTextNote but an
+   actual multi-line control. */
+/* No box at all — same fully plain, borderless treatment as this dialog's
+   own Scheduling Preferences fields. */
+.textareaInput {
+  font: inherit;
+  font-size: 15px;
+  color: var(--sched-text);
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  min-height: 90px;
+  resize: vertical;
+}
+
+.textareaInput:focus-visible {
+  outline: none;
+}
+
+.moreMenuWrapper {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+/* Position (top/right) is set inline via JS-measured coordinates from the
+   "..." button, not CSS relative to .moreMenuWrapper — this menu needs to be
+   `position: fixed` so it isn't clipped by, or counted toward the scrollable
+   height of, .boxList's own overflow: auto (both of those happened when it
+   was absolutely positioned relative to its row instead). */
+.moreMenu {
+  z-index: 200;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--page-bg);
+  border: 1px solid var(--sched-border-horizontal);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+}
+
+.moreMenuItem {
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.moreMenuItem:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.moreMenuItemDanger {
+  color: #ef4444;
+}
+
+/* Deliberate exception to "every button turns blue on hover" — Delete is
+   destructive, and losing the red on hover (the one moment you're actually
+   about to click it) would drop the only warning cue it has. */
+.moreMenuItemDanger:hover {
+  color: #ef4444;
+}
+
+.moreButton {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text-muted);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.moreButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+/* Distinct from .moreButton on purpose — that one's hover-red because it's
+   also the row's Delete trigger; these confirm/cancel an in-progress edit,
+   so they get their own (blue / neutral) colors instead of inheriting red. */
+.inlineSaveButton,
+.inlineCancelButton {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.inlineSaveButton:hover,
+.inlineCancelButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.countBadge {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--sched-accent);
+}
+
+.totalBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.statValue {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+/* Same bordered-box language as .boxList, just a single row rather than a
+   list — calendar icon + day/time pickers + add button all inside one
+   container instead of floating separately. */
+/* No enclosing border/box any more — a plain row, its own controls (day
+   select, time selects, the "+" button) already read as one unit via their
+   shared spacing. */
+.addRowBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.calendarIcon {
+  flex: 0 0 auto;
+  color: var(--sched-text-muted);
+}
+
+/* Start–end hour range — a single pill (filled background, no border) with
+   a plain-text "to" in the middle instead of a dash, matching
+   SchedulerDrawer's business hours control (see HourRangePicker below,
+   which now uses SearchableSelect's own variant="plain" for both the day
+   and the two hour fields, rather than a native <select>). */
+.hourRangeBox {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--sched-dim-bg);
+}
+
+/* SearchableSelect's own wrapper defaults to flex:1;min-width:0 (lets it
+   shrink to fit any host) — inside this pill specifically, that let it
+   shrink small enough to truncate "9:00 AM" down to "9:00 A…". A fixed
+   min-width sized for the longest real label ("12:00 PM") stops that. */
+.hourRangeBox > * {
+  min-width: 76px;
+}
+
+.hourRangeTo {
+  flex: 0 0 auto;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--sched-text-muted);
+}
+
+/* A plain blue plus icon (rounded stroke caps read as "curved" rather than a
+   flat typed "+"), no filled button background — matches the ghost-button
+   language used for "Add class type" in SchedulerDrawer rather than a solid
+   accent square. */
+.addButtonGhost {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.addButtonGhost:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.addButtonGhost:focus-visible {
+  outline: 2px solid var(--sched-accent);
+  outline-offset: 2px;
+}
+
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 32px;
+  border-top: 1px solid var(--sched-border-horizontal);
+}
+
+.footerCloseButton {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 9px 22px;
+  border: 1px solid var(--sched-border);
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.footerCloseButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+  border-color: var(--sched-accent);
+}
+
+/* Primary "Create instructor" action in Add mode, alongside .footerCloseButton (used there as plain Cancel) — matches RoomModal's own save/cancel pairing. */
+.footerCreateButton {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 9px 22px;
+  border: 1px solid var(--sched-accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sched-accent);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.footerCreateButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.footerCreateButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

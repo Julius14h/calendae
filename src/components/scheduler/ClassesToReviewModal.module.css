@@ -1,0 +1,330 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  animation: backdropFadeIn 200ms ease-out;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.card {
+  width: 760px;
+  max-width: 92vw;
+  height: 86vh;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--page-bg);
+  color: var(--sched-text);
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: cardFadeIn 250ms ease-out;
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .card {
+    animation: none;
+  }
+}
+
+.header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.closeButton {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--sched-text);
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.closeButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.emptyState {
+  margin: 0;
+  font-size: 15px;
+  color: var(--sched-text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--sched-text-muted);
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #ef4444 16%, transparent);
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* No enclosing border/card box any more — a plain flat list, its own rows
+   separated only by .boxRow's own divider (see ".boxRow + .boxRow"). */
+.boxList {
+  display: flex;
+  flex-direction: column;
+}
+
+.boxRow {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--sched-text);
+}
+
+.boxRow + .boxRow {
+  border-top: 1px solid var(--sched-border-horizontal);
+}
+
+.boxRowMain {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.issueText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.issueTitle {
+  font-weight: 400;
+}
+
+.issueDetail {
+  color: var(--sched-text-muted);
+  font-size: 13px;
+}
+
+.issueActions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.viewButton,
+.bookButton,
+.resolveButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  padding: 6px 12px;
+  border-radius: var(--sched-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.viewButton {
+  border: 1px solid var(--sched-border);
+  background: transparent;
+  color: var(--sched-text);
+}
+
+.viewButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+  border-color: var(--sched-accent);
+}
+
+/* Manually placing a class that never got booked at all — filled accent
+   blue (not the neutral outline .viewButton gets) since this actually
+   starts a real placement flow, not just a jump to something existing. */
+.bookButton {
+  border: 1px solid var(--sched-accent);
+  background: transparent;
+  color: var(--sched-accent);
+}
+
+.bookButton:hover {
+  background: var(--sched-row-hover);
+}
+
+/* Resolving is the one non-reversible-feeling action here (the issue is
+   gone from the list once clicked) — filled red rather than the neutral
+   outline .viewButton gets, so it doesn't read as equally casual. */
+.resolveButton {
+  border: 1px solid #ef4444;
+  background: transparent;
+  color: #ef4444;
+}
+
+.resolveButton:hover {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
+}
+
+.suggestedPanel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--sched-radius-sm);
+  background: color-mix(in srgb, var(--sched-accent) 10%, transparent);
+}
+
+.suggestedPanelIntro {
+  margin: 0 0 8px;
+  color: var(--sched-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.suggestedCandidateList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.suggestedCandidateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: var(--sched-radius-sm);
+  background: var(--sched-surface);
+}
+
+.suggestedCandidateText {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.suggestedCandidateName {
+  font-weight: 400;
+  color: var(--sched-text);
+}
+
+.suggestedCandidateMeta {
+  color: var(--sched-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  padding: 5px 10px;
+  border-radius: var(--sched-radius-sm);
+  border: 1px solid var(--sched-accent);
+  background: transparent;
+  color: var(--sched-accent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+}
+
+.assignButton:hover {
+  background: var(--sched-row-hover);
+}
+
+.footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  border-top: 1px solid var(--sched-border-horizontal);
+}
+
+.footerCloseButton {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 9px 22px;
+  border: 1px solid var(--sched-border);
+  border-radius: var(--sched-radius-sm);
+  background: transparent;
+  color: var(--sched-text);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.footerCloseButton:hover {
+  background: var(--sched-row-hover);
+  color: var(--sched-accent);
+  border-color: var(--sched-accent);
+}

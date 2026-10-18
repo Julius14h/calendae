@@ -1,0 +1,22 @@
+/* Same tonal-fill formula as EventBlock.module.css's own .event and
+   UnplacedClassesDrawer.module.css's own .row — reads as "the same class,
+   just briefly in flight" rather than a differently-designed effect.
+   Position is set inline (top/left = the popover's own center at mount
+   time); the animation itself (see FlyingChip.tsx) drives translate/scale/
+   opacity via the Web Animations API, not a CSS transition, so it plays
+   reliably from the very first frame with no class-toggle timing dance. */
+.chip {
+  position: fixed;
+  z-index: 260;
+  transform: translate(-50%, -50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1.5px solid var(--event-color, var(--sched-accent));
+  background: color-mix(in srgb, var(--event-color, var(--sched-accent)) 30%, var(--sched-surface));
+  color: var(--sched-text);
+  font-size: 12.5px;
+  font-weight: 400;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+}
